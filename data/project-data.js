@@ -66,7 +66,257 @@ window.PROJECT_DATA = {
       desc: "แสดงความเชื่อมโยงระหว่างไฟล์จริงทั้งหมดใน frontend/scripts/, backend/ (routes→controllers→services→utils) และ prisma/",
       lessonId: "lesson-1",
     },
+    {
+      id: "08-frontend-architecture",
+      sprint: "System Architecture · Frontend",
+      title: "8. Frontend Architecture — Build Pipeline, Guest Flow & My Schedule Modules",
+      desc: "เจาะลึกโครงสร้างใน frontend/: Tailwind build, esbuild bundle, หน้า Guest (app.js) และโมดูล 7 ไฟล์ใน frontend/scripts/",
+      lessonId: "lesson-3",
+    },
+    {
+      id: "09-backend-architecture",
+      sprint: "System Architecture · Backend",
+      title: "9. Backend Architecture — Server, Routes, Controllers, Services & Utils",
+      desc: "เจาะลึกโครงสร้างใน backend/: server.js → app.js → routes/ → controllers/ → services/ → utils/schedule.js",
+      lessonId: "lesson-1",
+    },
+    {
+      id: "10-database-architecture",
+      sprint: "System Architecture · Database",
+      title: "10. Database & Prisma Architecture — Schema, 4 Migrations, Seed & MySQL 8.4",
+      desc: "เจาะลึกโครงสร้างใน prisma/: schema.prisma (5 models), migrations/ (4 SQL), seed.js ($transaction upsert) และ MySQL utf8mb4",
+      lessonId: "lesson-2",
+    },
   ],
+
+  systemArchitecture: {
+    frontend: {
+      badge: "Frontend Layer",
+      title: "🎨 Frontend Architecture (frontend/)",
+      subtitle: "HTML5 + Vanilla JavaScript + Tailwind CSS v4 + Keycloak PKCE + esbuild Bundle",
+      diagramId: "08-frontend-architecture",
+      tree: `frontend/
+├── index.html               # หน้า Guest (PBI 1–2): 9 คอลัมน์, ปุ่ม All/Year 1–4, error-dialog
+├── app.js                   # Logic หน้า Guest: fetch ./api/v1/schedules ครั้งเดียว, cache allSchedules, pushState
+├── my-schedule.html         # หน้าส่วนตัว (PBI 3–7): 2 ตาราง (my-schedule, course-options) + 4 native <dialog>
+├── my-schedule.js           # [AUTO-GENERATED] ไฟล์ bundle จาก esbuild (ห้ามแก้ด้วยมือ!)
+├── input.css                # Tailwind v4 entry (@import "tailwindcss";)
+├── output.css               # [AUTO-GENERATED] ไฟล์ CSS minify จาก npm run build:css
+├── nginx.conf               # Config nginx ของ frontend container (เสิร์ฟไฟล์ static ที่ port 80)
+├── Dockerfile               # Build CSS + JS bundle แล้วคัดลอกเข้า nginx container
+└── scripts/                 # Source code แยกโมดูลของหน้า My Schedule
+    ├── my-schedule.js       # Entry point + state กลาง { studentId, schedules, selections }
+    ├── auth.js              # Keycloak client (realm: itb-csv, clientId: ip26-zen, PKCE S256) + isLecturer()
+    ├── profile.js           # เรียก GET /api/v1/students/:id (คืน null เฉพาะ 404)
+    ├── api.js               # Wrapper กลาง apiRequest() และ getJson() (จุดเพิ่ม Bearer token ใน Sprint 3)
+    ├── course-tables.js     # renderTables(): แยก My Schedule vs Courses to Choose และสร้างปุ่ม Action
+    ├── selections.js        # handleSelect / handleRemove / handleChange + selectionPending lock
+    ├── dialogs.js           # showError, showMessage, askRemove, askChange (Promise-based <dialog>)
+    └── vendor/              # ไฟล์สำรอง keycloak-js vendor`,
+      highlights: [
+        {
+          file: "frontend/app.js",
+          role: "Guest Schedule (PBI 1–2)",
+          explain: "เก็บข้อมูลไว้ในตัวแปร allSchedules แค่ครั้งเดียวตอนโหลดหน้า เมื่อกดปุ่ม All / Year 1–4 จะกรองจาก array ใน memory แล้วเรียก renderSchedules() สร้าง <tr> พร้อม data-testid ครบ 9 ช่อง (code, title, type, section, group, day, time, weeks, remarks) โดยไม่ยิง API ซ้ำ",
+          code: `let allSchedules = [];
+
+function renderSchedules(schedules) {
+  const tbody = document.getElementById("schedule-body");
+  tbody.replaceChildren();
+  if (schedules.length === 0) { emptyMessage.classList.remove("hidden"); return; }
+
+  schedules.forEach((schedule) => {
+    const tr = document.createElement("tr");
+    tr.setAttribute("data-testid", "schedule-row");
+    // ดึงข้อมูลจาก nested object: schedule.course.code, schedule.course.title, ...
+    // group & remarks: schedule.studentGroup ?? ""
+  });
+}`,
+        },
+        {
+          file: "frontend/scripts/my-schedule.js + auth.js + profile.js",
+          role: "Entry Point & Data Loading (PBI 3–4)",
+          explain: "เมื่อเปิด my-schedule.html โค้ดจะรัน signIn() ผ่าน Keycloak PKCE S256 → แสดงชื่อและปุ่ม Sign Out → เช็ก isLecturer(token) → ถ้าเป็นนักศึกษาเรียก getStudentProfile(studentId) (404 แสดง not-student) → แล้วใช้ Promise.all([getJson(schedulesUrl), getJson(selectionsUrl)]) โหลด 2 อย่างพร้อมกันครั้งเดียว",
+          code: `const state = { studentId: "", schedules: [], selections: [] };
+
+async function loadMySchedule() {
+  const token = await signIn(); // keycloak.init({ onLoad: "login-required", pkceMethod: "S256" })
+  if (isLecturer(token)) { /* แสดง lecturer-message */ return; }
+
+  state.studentId = token.preferred_username;
+  const profile = await getStudentProfile(state.studentId); // 404 -> null
+  if (!profile) { /* แสดง not-student */ return; }
+
+  const [schedules, selections] = await Promise.all([
+    getJson(\`./api/v1/year-levels/\${profile.yearLevel}/schedules?studentGroup=\${profile.studentGroup}\`),
+    getJson(\`./api/v1/students/\${encodeURIComponent(state.studentId)}/selections\`),
+  ]);
+  state.schedules = schedules;
+  state.selections = selections;
+  renderCurrentTables();
+}`,
+        },
+        {
+          file: "frontend/scripts/course-tables.js + selections.js + dialogs.js",
+          role: "2-Table Split, Mutations & Native Dialogs (PBI 5–7)",
+          explain: "course-tables.js สร้าง Map(courseId → section) เพื่อแบ่ง mySchedules (fixed หรือเลือกไว้) กับ options (!fixed และยังไม่เลือก) พร้อมคำนวณ changeable (มี >1 section) ส่วน selections.js ใช้ตัวแปร selectionPending กันกดปุ่มซ้ำ และใช้ dialogs.js (native <dialog> + Promise) ถามยืนยัน Remove/Change",
+          code: `// course-tables.js — แยก 2 ตารางจาก state โดยไม่ refetch schedules
+const selectedSections = new Map(selections.map((s) => [s.courseId, s.section]));
+const mySchedules = schedules.filter((s) => s.fixed || selectedSections.get(s.course.id) === s.section);
+const options = schedules.filter((s) => !s.fixed && !selectedSections.has(s.course.id));
+
+// selections.js — หลัง POST 201 / DELETE 204 / PUT 200 อัปเดต state.selections ใน memory แล้ว render ใหม่ทันที
+if (response.status === 201) {
+  state.selections.push(await response.json());
+  onChange(); // ไม่ reload หน้า และไม่ fetch schedules ใหม่!
+}`,
+        },
+      ],
+    },
+
+    backend: {
+      badge: "Backend Layer",
+      title: "⚙️ Backend Architecture (backend/)",
+      subtitle: "Node.js + Express 5 + Prisma Client — แยก 4 ชั้นชัดเจน (Routes → Controllers → Services → Utils)",
+      diagramId: "09-backend-architecture",
+      tree: `backend/
+├── server.js                      # Entry point: เช็ก DATABASE_URL, สร้าง PrismaClient, listen port 3000 + graceful shutdown
+├── app.js                         # createApp({ prisma, teamCode }): express.json(), /health, mount routes, static ../frontend, error 500
+├── app.test.js                    # ชุดทดสอบอัตโนมัติ (รันด้วย npm test / node --test)
+├── Dockerfile                     # Build Node image พร้อม Prisma CLI + generate client สำหรับรัน migrate/seed ใน container
+├── README.md                      # คู่มือ API contract และการรัน local
+├── routes/                        # ชั้นที่ 1: กำหนด HTTP Method + URL Path
+│   ├── schedule.routes.js         # GET /api/v1/schedules และ GET /api/v1/year-levels/:yearLevel/schedules
+│   ├── student.routes.js          # GET /api/v1/students/:studentId
+│   └── selection.routes.js        # GET / POST / DELETE /students/:id/selections และ PUT / DELETE /:courseId
+├── controllers/                   # ชั้นที่ 2: แกะ req.params / req.query / req.body และตอบ HTTP Status + JSON
+│   ├── schedule.controller.js     # ตรวจ yearLevel, กรอง studentGroup, แปลง DTO (public vs year-level)
+│   ├── student.controller.js      # เรียก findStudentProfile() → 200 หรือ 404
+│   └── selection.controller.js    # เรียก CRUD selections → 200 / 201 / 204 / 404 / 409
+├── services/                      # ชั้นที่ 3: Business Logic + คุยฐานข้อมูลผ่าน Prisma
+│   ├── schedule.service.js        # findSchedules(prisma, yearLevel) พร้อม include: { course: true }
+│   ├── student.service.js         # findStudentProfile(): ตรวจรหัส 11 หลัก, academicSettings, studentGroupRange
+│   └── selection.service.js       # findSelections, createSelection (จับ P2002), reset, remove, changeSelection
+└── utils/                         # ชั้นที่ 4: Pure Functions (Sort, Time Format, Fixed Calculation)
+    └── schedule.js                # DAY_ORDER Map, compareSchedules, normalizeTime, toPublicSchedule, isFixed`,
+      highlights: [
+        {
+          file: "backend/server.js → backend/app.js",
+          role: "Dependency Injection Pattern (ทำให้ง่ายต่อการ Test)",
+          explain: "server.js สร้าง PrismaClient จริงแล้วส่งเข้าไปใน createApp({ prisma }) ของ app.js เหตุผลที่ออกแบบแบบนี้เพราะตอนรัน npm test (app.test.js) สามารถส่ง mock prisma เข้า createApp() ได้ทันทีโดยไม่ต้องต่อ MySQL จริง!",
+          code: `// backend/app.js — Dependency Injection
+function createApp({ prisma, teamCode = process.env.TEAM_CODE, logger = console }) {
+  const app = express();
+  app.disable("x-powered-by");
+  app.use(express.json());
+
+  app.get("/api/v1/health", (_req, res) => res.status(200).json({ status: "ok", team: teamCode }));
+  app.use("/api/v1/schedules", createScheduleRouter(prisma));
+  app.use("/api/v1/year-levels", createGetYearLevelSchedulesRouter(prisma));
+  app.use("/api/v1/students", createStudentRouter(prisma));
+  app.use("/api/v1/students", createSelectionRouter(prisma));
+  return app;
+}`,
+        },
+        {
+          file: "backend/services/student.service.js & selection.service.js",
+          role: "Profile Decoding & Selection Business Logic",
+          explain: "student.service.js ตรวจรหัส 11 หลักด้วย regex /^\\d{11}$/, ดึง academicSettings(id=1) มาเช็ก programCode, คำนวณ yearLevel = currentAcademicYear % 100 - entryYear + 1 แล้วเช็กช่วง fromNo..toNo ส่วน selection.service.js เช็กว่าวิชาไม่ใช่ fixed ก่อน insert และจับ Prisma error P2002 (composite PK ซ้ำ) เป็น 'ALREADY_SELECTED' (409)",
+          code: `// backend/services/selection.service.js
+try {
+  return await prisma.selection.create({ data: { studentId, courseId, section } });
+} catch (error) {
+  if (error.code === "P2002") return "ALREADY_SELECTED"; // composite PK (studentId, courseId) ชน
+  throw error;
+}
+
+// changeSelection — ส่ง section เดิมคืนทันทีไม่ยิง UPDATE เพื่อคง updatedAt เดิม
+if (current.section === section) return current;`,
+        },
+        {
+          file: "backend/utils/schedule.js",
+          role: "6-Level Sort, TIME(0) Normalization & Fixed Rule",
+          explain: "ไฟล์นี้เก็บ logic กลางทั้งหมด: DAY_ORDER Map แปลง MONDAY=1..SUNDAY=7, normalizeTime() ดึง getUTCHours/getUTCMinutes จาก MySQL TIME(0) เป็น 'HH:MM', toPublicSchedule() สร้าง nested object course: { id, code, title, type, yearLevel } โดยไม่ใส่ room และ isFixed() คำนวณจาก countSectionsByCourse() ก่อนกรองกลุ่ม",
+          code: `function isFixed(schedule, sectionsByCourse) {
+  if (schedule.course.type !== "CORE") return false;      // ELECTIVE -> option
+  if (schedule.studentGroup !== null) return true;        // CORE มีกลุ่ม A/B -> fixed
+  return sectionsByCourse.get(schedule.course.id).size === 1; // CORE ไม่มีกลุ่ม 1 sec -> fixed
+}`,
+        },
+      ],
+    },
+
+    database: {
+      badge: "Database Layer",
+      title: "🗄️ Database & Prisma Architecture (prisma/ + MySQL 8.4)",
+      subtitle: "MySQL 8.4 (utf8mb4_unicode_ci) + Prisma 6.19 ORM — 5 Models, 4 SQL Migrations & Idempotent Seed",
+      diagramId: "10-database-architecture",
+      tree: `prisma/
+├── schema.prisma                                   # นิยาม 3 Enums + 5 Models (camelCase <-> snake_case)
+├── seed.js                                         # สคริปต์ seed ใน $transaction (upsert ตาม ID รันซ้ำได้)
+├── seed-data.json                                  # ข้อมูลตั้งต้น 51 courses + 92 schedules + settings + ranges
+├── README.md                                       # คู่มือ Database handoff และคำสั่ง Prisma
+└── migrations/                                     # ประวัติ SQL migrations (ห้ามแก้ไฟล์เดิมที่รันไปแล้ว)
+    ├── migration_lock.toml                         # ล็อก provider = "mysql"
+    ├── 20261107134000_init/migration.sql           # Sprint 1: ตาราง courses, courses_schedule
+    ├── 20261107220000_attribute_checks/            # Sprint 1: MySQL CHECK constraints
+    ├── 20261114000000_sprint2_profile_and_selections/ # Sprint 2: academic_settings, ranges, selections
+    └── 20261115000000_selection_update_timestamp/  # Sprint 2: updated_at DB timestamp behavior`,
+      highlights: [
+        {
+          file: "prisma/schema.prisma",
+          role: "Schema Mapping & Constraints",
+          explain: "กำหนด 3 enums (CourseType, DayOfWeek, StudentGroup) และ 5 models โดยใช้ @map/@map() เพื่อเชื่อมโค้ด JS (camelCase) กับตาราง MySQL (snake_case), ใช้ @@unique([code, title]) บน courses เพื่อกันรหัสซ้ำแต่หัวข้อต่าง (INT403/INT521/INT540) และใช้ @@id([studentId, courseId]) บน selections",
+          code: `model Course {
+  id         Int              @id @default(autoincrement())
+  code       String           @db.Char(6)
+  title      String           @db.VarChar(100)
+  type       CourseType
+  yearLevel  Int              @map("year_level")
+  schedules  CourseSchedule[]
+  selections Selection[]
+
+  @@unique([code, title])
+  @@map("courses")
+}`,
+        },
+        {
+          file: "prisma/seed.js & prisma/seed-data.json",
+          role: "Idempotent Transaction Seeding",
+          explain: "ตรวจจำนวนแถวก่อน seed (51 courses / 92 schedules) แล้วรันทั้งหมดใน prisma.$transaction(..., { timeout: 30000 }) โดยใช้ upsert ตาม original ID ทำให้รัน npm run prisma:seed กี่ครั้งก็ได้ข้อมูลเดิมไม่ซ้ำ และแปลงเวลา '09:30' ด้วย new Date('1970-01-01T09:30:00.000Z') ให้ตรงกับคอลัมน์ MySQL TIME(0)",
+          code: `function mysqlTime(value) {
+  return new Date(\`1970-01-01T\${value}:00.000Z\`);
+}
+
+await prisma.$transaction(async (tx) => {
+  await tx.academicSettings.upsert({ where: { id: 1 }, create: ..., update: ... });
+  for (const course of courses) {
+    await tx.course.upsert({ where: { id: course.id }, create: course, update: course });
+  }
+  for (const schedule of schedules) {
+    await tx.courseSchedule.upsert({
+      where: { id: schedule.id },
+      create: { ...schedule, startTime: mysqlTime(schedule.startTime), endTime: mysqlTime(schedule.endTime) },
+      update: { ...schedule, startTime: mysqlTime(schedule.startTime), endTime: mysqlTime(schedule.endTime) },
+    });
+  }
+}, { timeout: 30000 });`,
+        },
+        {
+          file: "compose.yaml (database service)",
+          role: "MySQL 8.4 Container & Persistent Volume",
+          explain: "รัน image mysql:8.4 พร้อม flag --character-set-server=utf8mb4 และ --collation-server=utf8mb4_unicode_ci เพื่อไม่ให้อักขระพิเศษ/ภาษาไทยใน remarks เสีย ผูกข้อมูลกับ named volume ชื่อ mysql-data (จึงห้ามใช้ docker compose down -v บน VM) และมี healthcheck SELECT 1 ให้ backend รอจน DB พร้อมก่อนเปิด",
+          code: `database:
+  image: mysql:8.4
+  command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+  volumes:
+    - mysql-data:/var/lib/mysql
+  healthcheck:
+    test: ["CMD-SHELL", "mysql --protocol=TCP -h 127.0.0.1 -u\\"$$MYSQL_USER\\" -p\\"$$MYSQL_PASSWORD\\" \\"$$MYSQL_DATABASE\\" -e 'SELECT 1'"]`,
+        },
+      ],
+    },
+  },
 
   projectInfo: {
     repoName: "int504-2026-project-group-44",

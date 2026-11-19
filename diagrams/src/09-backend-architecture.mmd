@@ -1,0 +1,29 @@
+flowchart TD
+  Srv["backend/server.js\nCheck DATABASE_URL, create PrismaClient\nlisten 0.0.0.0:3000 + graceful shutdown"] --> App["backend/app.js\ncreateApp(prisma, teamCode)\nexpress.json() + GET /api/v1/health\nstatic ../frontend + 500 error handler"]
+
+  subgraph Routes["backend/routes/ (URL Matching)"]
+    R1["schedule.routes.js\nGET /schedules\nGET /year-levels/:yearLevel/schedules"]
+    R2["student.routes.js\nGET /students/:studentId"]
+    R3["selection.routes.js\nGET / POST / DELETE /students/:id/selections\nPUT / DELETE /:courseId"]
+  end
+
+  subgraph Controllers["backend/controllers/ (HTTP Req/Res)"]
+    C1["schedule.controller.js\nValidate yearLevel, filter studentGroup\nmap public vs year-level JSON"]
+    C2["student.controller.js\nReturn 200 profile or 404"]
+    C3["selection.controller.js\nReturn 200/201/204/404/409"]
+  end
+
+  subgraph Services["backend/services/ (Business Logic + Prisma)"]
+    S1["schedule.service.js\nfindSchedules(prisma, yearLevel)\ninclude: course"]
+    S2["student.service.js\nfindStudentProfile(prisma, id)\n11-digit check + settings + ranges"]
+    S3["selection.service.js\nfind / create / reset / remove / change\ncatch P2002 -> ALREADY_SELECTED"]
+  end
+
+  Util["backend/utils/schedule.js\nDAY_ORDER sort, normalizeTime()\ntoPublicSchedule(), countSectionsByCourse()\nisFixed(), toYearLevelSchedule()"]
+
+  App --> R1 & R2 & R3
+  R1 --> C1 --> S1
+  R2 --> C2 --> S2
+  R3 --> C3 --> S3
+  C1 & S3 --> Util
+  S3 --> S1 & S2

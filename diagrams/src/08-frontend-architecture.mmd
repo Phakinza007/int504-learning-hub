@@ -1,0 +1,22 @@
+flowchart TD
+  subgraph Build["Build Pipeline (Dev / Docker Build)"]
+    CSSIn["frontend/input.css"] -->|npm run build:css\nTailwind CSS v4| CSSOut["frontend/output.css"]
+    Entry["frontend/scripts/my-schedule.js"] -->|npm run build:js\nesbuild IIFE bundle| Bundle["frontend/my-schedule.js"]
+  end
+
+  subgraph Guest["Guest Flow — PBI 1 & 2 (No Keycloak)"]
+    Idx["frontend/index.html\n9-col table, year buttons, error-dialog"] --> AppJS["frontend/app.js\nfetch ./api/v1/schedules once\ncache in allSchedules + pushState"]
+  end
+
+  subgraph AuthFlow["Authenticated Flow — PBI 3-7 (frontend/scripts/)"]
+    MyHTML["frontend/my-schedule.html\n2 tables + 4 native dialogs"] --> Bundle
+    Bundle --> Main["scripts/my-schedule.js\nstate = studentId, schedules, selections"]
+    Main --> Auth["scripts/auth.js\nkeycloak-js PKCE S256 (ip26-zen)"]
+    Main --> Prof["scripts/profile.js\nGET /students/:id (404 -> null)"]
+    Main --> API["scripts/api.js\napiRequest() & getJson()"]
+    Main --> Tables["scripts/course-tables.js\nrenderTables() -> my-schedule & options"]
+    Main --> Sel["scripts/selections.js\nhandleSelect / Remove / Change\nselectionPending lock"]
+    Sel --> Dlg["scripts/dialogs.js\nshowError, showMessage\naskRemove, askChange (+ askClash S3)"]
+    Prof --> API
+    Sel --> API
+  end

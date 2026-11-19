@@ -1,0 +1,23 @@
+flowchart TD
+  subgraph Files["prisma/ Folder Structure"]
+    Schema["prisma/schema.prisma\n3 Enums: CourseType, DayOfWeek, StudentGroup\n5 Models mapped to snake_case tables"]
+    Mig["prisma/migrations/ (4 SQL files)\n1. init (courses, courses_schedule)\n2. attribute_checks (MySQL CHECK)\n3. sprint2_profile_and_selections\n4. selection_update_timestamp"]
+    SeedJSON["prisma/seed-data.json\n51 courses + 92 schedules\n1 settings + 8 ranges"]
+    SeedJS["prisma/seed.js\nprisma.$transaction upsert by ID\nmysqlTime() -> 1970-01-01T..Z"]
+    SeedJSON --> SeedJS
+  end
+
+  subgraph MySQL["MySQL 8.4 Container (utf8mb4_unicode_ci · volume: mysql-data)"]
+    T1["courses (51 rows)\nPK id · UNIQUE(code, title)"]
+    T2["courses_schedule (92 rows)\nPK id · FK course_id · TIME(0)"]
+    T3["academic_settings (1 row)\nyear: 2569, code: 504504"]
+    T4["student_group_ranges (8 rows)\nentry_year 66..69 · group A/B"]
+    T5["selections (empty at start)\nComposite PK(student_id, course_id)\ncreated_at, updated_at"]
+    T1 -->|1 : N| T2
+    T1 -->|1 : N| T5
+  end
+
+  Schema -->|npm run prisma:generate| Client["@prisma/client\nUsed by backend/services/*"]
+  Mig -->|npm run prisma:migrate| MySQL
+  SeedJS -->|npm run prisma:seed| MySQL
+  Client -->|DATABASE_URL\nTCP :3306| MySQL

@@ -5,8 +5,9 @@
 
   const VIEW_TITLES = {
     overview: "ภาพรวมโปรเจกต์ & ทีม",
+    arch: "System Architecture — แยก Frontend / Backend / Database",
     project: "รายละเอียดโค้ดจริงในโปรเจกต์ (int504-2026-project-group-44)",
-    diagrams: "Excalidraw Diagrams (7 แผนภาพ)",
+    diagrams: "Excalidraw Diagrams (10 แผนภาพ)",
     lessons: "บทเรียน 7 บท (Sprint 1–3)",
     pbis: "Backlog PBI 1–12 & Checklist",
     api: "API Contracts & Database Schema",
@@ -17,6 +18,7 @@
 
   const state = {
     view: "overview",
+    archLayer: "frontend",
     activeLesson: DATA.lessons[0].id,
     fileLayer: "all",
     fileQuery: "",
@@ -240,9 +242,9 @@
             <strong>Definition of Done:</strong> Gate และทุก Test Case ของ PBI (รวม PBI เก่า Sprint 1–2) ต้องผ่านบนระบบที่ Deploy จริงผ่าน Run Now / Snapshot
           </div>
           <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-primary" data-jump-view="project" type="button">ดูรายละเอียดโค้ดจริงในโปรเจกต์ →</button>
-            <button class="btn" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 7 ภาพ</button>
-            <button class="btn" data-jump-view="playground" type="button">ลองเล่น Interactive Lab</button>
+            <button class="btn btn-primary" data-jump-view="arch" type="button">เจาะลึก System Arch (Front / Back / DB) →</button>
+            <button class="btn" data-jump-view="project" type="button">ตารางไฟล์ทั้งหมด</button>
+            <button class="btn" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 10 ภาพ</button>
           </div>
         </div>
       </section>
@@ -263,6 +265,62 @@
             )
             .join("")}
         </div>
+      </section>
+    `;
+  }
+
+  /* ==================== VIEW 1.2: SYSTEM ARCH (FRONT / BACK / DB) ==================== */
+  function renderSystemArch() {
+    const layers = [
+      ["frontend", "🎨 Frontend (frontend/)"],
+      ["backend", "⚙️ Backend (backend/)"],
+      ["database", "🗄️ Database (prisma/ + MySQL)"],
+    ];
+    const current = DATA.systemArchitecture[state.archLayer] || DATA.systemArchitecture.frontend;
+    const diagram = DATA.diagrams.find((d) => d.id === current.diagramId);
+
+    return `
+      <section class="card" style="margin-bottom:1.25rem;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.85rem;">
+          <div>
+            <span class="badge badge-indigo">${escapeHtml(current.badge)}</span>
+            <h2 style="margin:0.45rem 0 0.2rem;">${escapeHtml(current.title)}</h2>
+            <p style="margin:0; font-size:0.88rem; color:var(--text-secondary);">${escapeHtml(current.subtitle)}</p>
+          </div>
+          <div class="chip-group" role="tablist" aria-label="Architecture Layer">
+            ${layers
+              .map(
+                ([key, label]) =>
+                  `<button type="button" role="tab" aria-selected="${state.archLayer === key}" class="chip ${state.archLayer === key ? "active" : ""}" data-arch-layer="${key}">${escapeHtml(label)}</button>`,
+              )
+              .join("")}
+          </div>
+        </div>
+      </section>
+
+      ${diagram ? renderDiagramCard(diagram) : ""}
+
+      <section class="card section-block">
+        <h3 class="card-title">📂 โครงสร้างโฟลเดอร์และไฟล์จริงในชั้นนี้</h3>
+        ${renderCodeBlock(`${state.archLayer}/ folder tree`, current.tree)}
+      </section>
+
+      <section class="section-block">
+        <h3 class="card-title" style="margin-bottom:0.85rem;">🔍 เจาะลึกโค้ดข้างในทำงานอย่างไร (Code Walkthrough)</h3>
+        ${current.highlights
+          .map(
+            (item) => `
+          <article class="card" style="margin-bottom:1rem;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.5rem;">
+              <code class="mono" style="font-weight:700; font-size:0.92rem; color:var(--accent-text);">${escapeHtml(item.file)}</code>
+              <span class="badge badge-emerald">${escapeHtml(item.role)}</span>
+            </div>
+            <p style="margin:0 0 0.65rem; font-size:0.9rem; color:var(--text-secondary);">${escapeHtml(item.explain)}</p>
+            ${renderCodeBlock(item.file, item.code)}
+          </article>
+        `,
+          )
+          .join("")}
       </section>
     `;
   }
@@ -1024,6 +1082,7 @@
     });
 
     if (state.view === "overview") contentEl.innerHTML = renderOverview();
+    else if (state.view === "arch") contentEl.innerHTML = renderSystemArch();
     else if (state.view === "project") contentEl.innerHTML = renderProjectInfo();
     else if (state.view === "diagrams") contentEl.innerHTML = renderDiagrams();
     else if (state.view === "lessons") contentEl.innerHTML = renderLessons();
@@ -1118,6 +1177,13 @@
       state.activeLesson = lessonBtn.dataset.lessonId;
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const archLayerBtn = e.target.closest("[data-arch-layer]");
+    if (archLayerBtn) {
+      state.archLayer = archLayerBtn.dataset.archLayer;
+      render();
       return;
     }
 
