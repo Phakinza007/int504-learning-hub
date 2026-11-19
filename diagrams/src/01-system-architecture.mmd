@@ -1,0 +1,9 @@
+flowchart LR
+  User["Browser\n(Guest / Student / Lecturer)"] -->|HTTPS 443\n/intproj26/TEAM-PATH/| Proxy["Nginx Reverse Proxy\n(Container 1)"]
+  User -.->|PBI 3 & 10\nPKCE S256 Login| KC["Keycloak Server\nrealm: itb-csv\nclientId: TEAM-CODE"]
+
+  Proxy -->|Static HTML / CSS / JS| FE["Frontend Container\n(Container 2)\nindex.html + my-schedule.html"]
+  Proxy -->|Strip prefix\n/api/v1/*| BE["Backend Container\n(Container 3)\nNode.js + Express 5 + Prisma"]
+
+  BE -.->|PBI 10\nVerify JWT via JWKS| KC
+  BE -->|TCP 3306\nutf8mb4| DB[("MySQL 8 Database\n(Container 4)\ncourses, selections, sessions")]

@@ -1,0 +1,18 @@
+flowchart LR
+  Courses["courses (51)\nPK id\nUNIQUE(code, title)\ncode, title, type, year_level"]
+  Schedules["courses_schedule (92 -> 97)\nPK id, FK course_id\nsection, day, start/end time\nstart/end week, room, group"]
+  Selections["selections (Sprint 2)\nPK (student_id, course_id)\nsection, created_at, updated_at"]
+  Lecturers["lecturers (26)\nPK id, username\nfirst_name, last_name"]
+  SchedLec["schedule_lecturer (70)\nFK schedule_id\nFK lecturer_id"]
+  Sessions["sessions (1,181)\nPK id (1..1181)\nUNIQUE(schedule_id, date)"]
+  Settings["academic_settings (1)\ncurrent_academic_year: 2569\nprogram_code: 504504"]
+  Ranges["student_group_ranges (8)\nentry_year 66..69\ngroup A/B, from_no..to_no"]
+  Calendar["Calendar Tables (Sprint 3)\nacademic_weeks (19)\nholidays (7)\nexam_periods (3)"]
+
+  Courses -->|1 : N| Schedules
+  Courses -->|1 : N| Selections
+  Schedules -->|1 : N| SchedLec
+  Lecturers -->|1 : N| SchedLec
+  Schedules -->|1 : N| Sessions
+  Calendar -.->|Generate - exams + holidays| Sessions
+  Settings -.->|Profile 11-digit check| Ranges

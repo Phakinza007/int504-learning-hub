@@ -1,0 +1,946 @@
+window.PROJECT_DATA = {
+  meta: {
+    course: "INT504 Integrated Project",
+    project: "IT-Bangmod Class Schedule Viewing System (itb-csv)",
+    semester: "ภาคเรียนที่ 1/2569 (Academic Year 2569)",
+    teamGroup: "Group 44",
+    teamCode: "ip26-zen",
+    publicPathNote: "/intproj26/<TEAM-PATH>/",
+    stack: [
+      "HTML5 & Vanilla JS",
+      "Tailwind CSS",
+      "Node.js + Express 5",
+      "Prisma ORM + MySQL 8",
+      "Keycloak (OIDC / PKCE)",
+      "Nginx + Docker Compose",
+    ],
+  },
+
+  diagrams: [
+    {
+      id: "01-system-architecture",
+      sprint: "Sprint 1–3",
+      title: "1. System Architecture — 4 Containers, Nginx & Keycloak",
+      desc: "ภาพรวมการเชื่อมต่อตั้งแต่ Browser → Nginx Reverse Proxy (/intproj26/<TEAM-PATH>/) → Frontend / Backend / MySQL และ Keycloak",
+      lessonId: "lesson-1",
+    },
+    {
+      id: "02-backend-pipeline",
+      sprint: "Sprint 3 (PBI 9–11)",
+      title: "2. Backend 4-Layer & Error Priority Pipeline (401→403→400→404→409)",
+      desc: "ลำดับการทำงานของ Middleware, Routes, Controllers, Services และลำดับ Error Code แบบ application/problem+json",
+      lessonId: "lesson-5",
+    },
+    {
+      id: "03-database-erd",
+      sprint: "Sprint 1–3",
+      title: "3. Database Schema & Relationships (ERD)",
+      desc: "ความสัมพันธ์ระหว่าง courses (51), courses_schedule (92→97), selections, lecturers (26), schedule_lecturer (70), calendar และ sessions (1,181)",
+      lessonId: "lesson-2",
+    },
+    {
+      id: "04-auth-pkce-flow",
+      sprint: "Sprint 2–3 (PBI 3 & 10)",
+      title: "4. Keycloak PKCE S256 & JWKS Bearer Token Flow",
+      desc: "ขั้นตอนการ Sign In, ต่ออายุ token (updateToken), ส่ง Authorization: Bearer และตรวจ JWKS + role/self ฝั่ง Backend",
+      lessonId: "lesson-6",
+    },
+    {
+      id: "05-fixed-vs-option",
+      sprint: "Sprint 2 (PBI 4)",
+      title: "5. กฎแยกวิชา Fixed vs Option และการแบ่ง 2 ตาราง",
+      desc: "วิธีคำนวณ fixed ก่อนกรอง studentGroup และแยกแถวลงตาราง My Schedule กับ Courses to Choose",
+      lessonId: "lesson-4",
+    },
+    {
+      id: "06-selection-clash-flow",
+      sprint: "Sprint 2–3 (PBI 5–7 & 11)",
+      title: "6. Select / Change Section & Schedule Clash Flow",
+      desc: "โฟลว์เต็มของ POST/PUT selections, กฎ updatedAt, การตรวจเวลาชน 3 เงื่อนไข และ askClash() Dialog พร้อม acceptClash: true",
+      lessonId: "lesson-6",
+    },
+  ],
+
+  timeline: [
+    { date: "27 ต.ค. 2569", sprint: "Intro", text: "Class 1 — Course Brief และภาพรวมระบบ itb-csv" },
+    { date: "3 พ.ย. 2569", sprint: "Sprint 1", text: "Class 2 — เริ่ม Sprint 1 (PBI 1–2: Guest Schedule & Year Filter)" },
+    { date: "9 พ.ย. 2569 · 23:59", sprint: "Sprint 1", text: "Snapshot Sprint 1" },
+    { date: "10 พ.ย. 2569", sprint: "Sprint 2", text: "Class 3 — เริ่ม Sprint 2 (PBI 3–7: Keycloak, My Schedule, Select/Remove/Change)" },
+    { date: "16 พ.ย. 2569 · 18:00 / 23:59", sprint: "Sprint 2", text: "Trial (18:00) และ Snapshot Sprint 2 (23:59)" },
+    { date: "17 พ.ย. 2569", sprint: "Sprint 3", text: "Class 4 — ปล่อยรายละเอียด Sprint 3 (PBI 8–12) และบันทึก Commitment" },
+    { date: "19 พ.ย. 2569", sprint: "Sprint 3", text: "ปล่อยชุดทดสอบ Sprint 3 (tests/expected)" },
+    { date: "23 พ.ย. 2569 · 18:00 / 23:59", sprint: "Sprint 3", text: "Trial (18:00) และ Snapshot สุดท้าย (23:59) — PBI 1–12 ต้องผ่านทั้งหมด" },
+  ],
+
+  teamRoles: [
+    {
+      name: "Alan",
+      color: "indigo",
+      sprint1: "Database + Prisma Schema, Migration, Seed 51 Courses / 92 Schedules, MySQL utf8mb4",
+      sprint2: "PBI 3 Sign In/Out (Keycloak), academic_settings & student_group_ranges, Profile API/UI, Config Deploy",
+      sprint3: "PBI 8 View Lecturer Schedule (DB/API/UI + Instructor column) และ PBI 12 Frontend Weekly Timetable (timetable.js)",
+    },
+    {
+      name: "Beam",
+      color: "emerald",
+      sprint1: "Backend Express API (/health, /schedules + filter & 6-level sort + no room), Backend Dockerfile",
+      sprint2: "PBI 4 Year-level Schedules API (fixed/option + room) & 2 ตาราง My Schedule, PBI 5 Select Section (API + UI)",
+      sprint3: "PBI 9 Validate Requests & application/problem+json (+ Home URL fix), PBI 11 Warn Selection Clash (API + Dialog), PBI 12 API (/semester, /sessions)",
+    },
+    {
+      name: "Dragon",
+      color: "amber",
+      sprint1: "Frontend Guest UI (HTML/Tailwind/JS), Nginx Reverse Proxy, Frontend Dockerfile & Docker Compose (4 containers)",
+      sprint2: "PBI 4/6/7 Selections schema + GET/reset, Remove & Change Section (API + UI + timestamp rules)",
+      sprint3: "PBI 10 Protect API (JWKS/JWT middleware + Bearer token refresh), PBI 12 Calendar & generate-sessions (1,181 แถว), Config/Deploy บน VM",
+    },
+  ],
+
+  pbis: [
+    {
+      id: "PBI1",
+      sprint: 1,
+      name: "VIEW-ALL-SCHEDULE",
+      title: "ดูตารางเรียนสาธารณะทั้งหมด (Guest)",
+      owners: ["Alan", "Beam", "Dragon"],
+      tests: "TC-PBI1-1 ถึง TC-PBI1-11",
+      summary: "หน้า Home แสดงตารางเรียน 92 แถวโดยไม่ Sign In, เรียงลำดับ 6 ระดับ และไม่ส่ง/ไม่แสดง room",
+      details: [
+        "GET /api/v1/health ตอบ 200 พร้อม { status: 'ok', team: '<TEAM-CODE>' } เท่านั้น",
+        "GET /api/v1/schedules คืน 92 แถว เรียงตาม yearLevel → courseId → section → dayOfWeek (Monday..Sunday) → startTime → id",
+        "Public API ห้ามคืน room และห้ามคืน fixed; studentGroup/remarks ที่ไม่มีค่าต้องเป็น null",
+        "Frontend แสดง 9 คอลัมน์ (Code, Title, Type, Section, Group, Day, Time, Weeks, Remarks) พร้อม data-testid ครบ",
+      ],
+      traps: [
+        "ห้ามเรียงวันตามตัวอักษร (FRIDAY จะมาก่อน MONDAY) ต้อง map ลำดับ Monday = 1 ถึง Sunday = 7",
+        "Error modal ต้องมี role='dialog' และปิดด้วยปุ่ม Esc ไม่ได้",
+        "หน้า Home ห้ามติดต่อ Keycloak และต้องโหลด /schedules เพียงครั้งเดียว",
+      ],
+    },
+    {
+      id: "PBI2",
+      sprint: 1,
+      name: "VIEW-SCHEDULE-BY-YEAR-LEVEL",
+      title: "กรองตารางเรียนตามชั้นปี 1–4",
+      owners: ["Beam", "Dragon"],
+      tests: "TC-PBI2-1 ถึง TC-PBI2-9",
+      summary: "ปุ่ม All / Year 1–4 กรองจาก cache ในหน้าเว็บโดยไม่ fetch ซ้ำ และอัปเดต URL ด้วย history.pushState()",
+      details: [
+        "Backend รองรับ GET /api/v1/schedules?yearLevel=1..4",
+        "Frontend ใช้ปุ่ม <button> จริงพร้อม aria-pressed='true|false'",
+        "เปลี่ยนชั้นปีโดยไม่ reload หน้า, อัปเดต URL ด้วย history.pushState() และรองรับการเปิดลิงก์ ?yearLevel=n โดยตรง",
+      ],
+      traps: [
+        "หลังโหลดครั้งแรกแล้ว กดสลับ Year 1–4 หรือ All ห้ามยิง request ไป /api/v1/schedules ซ้ำ (TR-06)",
+        "จำนวนแถวอ้างอิงใน seed: Year 1 = 27, Year 2 = 17, Year 3 = 28, Year 4 = 20 (รวม 92)",
+      ],
+    },
+    {
+      id: "PBI3",
+      sprint: 2,
+      name: "SIGN-IN",
+      title: "เข้าสู่ระบบและออกจากระบบผ่าน Keycloak",
+      owners: ["Alan"],
+      tests: "TC-PBI3-1 ถึง TC-PBI3-6",
+      summary: "ลิงก์ My Schedule จาก Home พาไป my-schedule.html ที่ใช้ Keycloak PKCE S256 และ Sign Out จบ session",
+      details: [
+        "my-schedule.html ใช้ keycloak-js: onLoad 'login-required', realm 'itb-csv', pkceMethod 'S256', clientId = TEAM-CODE",
+        "แสดงชื่อเต็มจาก token และปุ่ม Sign Out ที่จบ Keycloak session แล้วกลับหน้า Home",
+        "ใช้ preferred_username เป็น studentId/username และแยก role (student / lecturer) จาก token",
+      ],
+      traps: [
+        "ห้ามสร้างตารางบัญชีหรือเก็บชื่อ/รหัสผ่านจาก Keycloak ลงฐานข้อมูล",
+        "หลัง Sign Out แล้วเข้า My Schedule ใหม่ต้องถูกบังคับ Sign In อีกครั้ง",
+      ],
+    },
+    {
+      id: "PBI4",
+      sprint: 2,
+      name: "VIEW-MY-SCHEDULE",
+      title: "ดูตารางเรียนส่วนตัวและวิชาเลือกของชั้นปี",
+      owners: ["Alan", "Beam", "Dragon"],
+      tests: "TC-PBI4-1 ถึง TC-PBI4-20",
+      summary: "คำนวณปี/กลุ่มจาก Backend, แบ่งวิชา fixed vs option, แสดง 2 ตารางพร้อมคอลัมน์ Room",
+      details: [
+        "GET /api/v1/students/{id} ตรวจรหัส 11 หลัก (YY + programCode 6 หลัก + NNN) กับ academic_settings & student_group_ranges",
+        "GET /api/v1/year-levels/{n}/schedules?studentGroup=A|B คืน fields เดิม + room + fixed",
+        "กฎ fixed: CORE ที่มีกลุ่ม A/B หรือ CORE ไม่มีกลุ่มและมี section เดียว = fixed; CORE ไม่มีกลุ่มหลาย section และ ELECTIVE = option",
+        "ขอ profile, schedules และ selections อย่างละ 1 ครั้งต่อ page load",
+      ],
+      traps: [
+        "ต้องนับจำนวน distinct sections ของแต่ละ course ก่อนกรอง studentGroup เสมอ!",
+        "เฉพาะ Profile 404 เท่านั้นที่แสดง 'Your account is not a student of the BSc.IT program.' — ถ้า selections ได้ 404 ให้ใช้ error dialog",
+        "ใช้ courseId เป็นตัวระบุ ห้ามใช้ code เพราะ INT403/INT521/INT540 มีหลายหัวข้อ",
+      ],
+    },
+    {
+      id: "PBI5",
+      sprint: 2,
+      name: "SELECT-SECTION",
+      title: "เลือก section เข้าตารางเรียน",
+      owners: ["Beam"],
+      tests: "TC-PBI5-1 ถึง TC-PBI5-14",
+      summary: "ปุ่ม Select ส่ง POST ทันทีไม่ถามยืนยัน ย้ายทุกแถวของ section เข้า My Schedule โดยไม่ refetch schedules",
+      details: [
+        "POST /api/v1/students/{id}/selections ด้วย { courseId, section }",
+        "201 สำเร็จ → ย้ายทุกแถวของ section ลง My Schedule และนำทุก option ของ course ออกจาก Courses to Choose",
+        "409 ซ้ำ course (ทั้ง section เดิมหรือใหม่) → 'This course is already in your schedule.'",
+        "404 ไม่ใช่ option ของปีนั้น / fixed / ไม่มี section → 'This section is not available to you.'",
+      ],
+      traps: [
+        "เมื่อเกิด 404/409 แล้วกด OK หรือ Esc ต้อง reread selections (หรือ reload) เพื่อให้ 2 ตารางตรงกับ DB กรณีอีกแท็บแก้ข้อมูลไปก่อน",
+        "เมื่อเลือกครบทุก course แล้ว ต้องซ่อนทั้ง heading และ table ของ Courses to Choose",
+      ],
+    },
+    {
+      id: "PBI6",
+      sprint: 2,
+      name: "REMOVE-SELECTION",
+      title: "ลบ section ที่นักศึกษาเลือกเอง",
+      owners: ["Dragon"],
+      tests: "TC-PBI6-1 ถึง TC-PBI6-8",
+      summary: "ปุ่ม Remove เฉพาะแถวที่เลือกเอง มี confirm dialog บนหน้าเว็บ (ไม่ใช้ browser confirm) และคืนทุก section ของ course",
+      details: [
+        "DELETE /api/v1/students/{id}/selections/{courseId} → 204 (ไม่มี response body) หรือ 404",
+        "DELETE /api/v1/students/{id}/selections → reset ทั้งหมด (204 แม้เริ่มว่าง, 404 ถ้าไม่ใช่นักศึกษาในโปรแกรม)",
+        "Dialog ถามยืนยัน เช่น 'Remove INT221 UI Design section 1?' พร้อมปุ่ม Remove / Cancel",
+      ],
+      traps: [
+        "วิชา fixed ห้ามมีปุ่ม Remove; Cancel หรือ Esc ห้ามส่งคำสั่งลบ",
+        "เมื่อลบสำเร็จต้องคืนทุก section ของ course นั้นกลับเข้า Courses to Choose ตามลำดับ PBI1 โดยไม่ reload/refetch schedules",
+      ],
+    },
+    {
+      id: "PBI7",
+      sprint: 2,
+      name: "CHANGE-SECTION",
+      title: "เปลี่ยน section ในครั้งเดียว",
+      owners: ["Dragon"],
+      tests: "TC-PBI7-1 ถึง TC-PBI7-10",
+      summary: "ปุ่ม Change เฉพาะวิชาที่เลือกและมีหลาย section พร้อม radio dialog ที่คง createdAt และจัดการ updatedAt ถูกต้อง",
+      details: [
+        "PUT /api/v1/students/{id}/selections/{courseId} ด้วย { section }",
+        "Dialog แสดงเฉพาะ section อื่นเป็น radio เช่น 'Section 2: Thursday 14:00-17:00' และปุ่ม Change disabled จนกว่าจะเลือก",
+        "200 แทนทุกแถวของ section เดิมด้วย section ใหม่และเรียงแบบ PBI1",
+      ],
+      traps: [
+        "ส่ง section เดิมซ้ำต้องตอบ 200 โดยไม่เปลี่ยนข้อมูล รวมถึง updatedAt ต้องคงเดิม!",
+        "เปลี่ยนเป็น section ใหม่จริงต้องคง createdAt เดิม และอัปเดต updatedAt ตามเวลา DB",
+        "ถ้าวิชานั้นมี section เดียว ห้ามแสดงปุ่ม Change (หรือซ่อน/disabled)",
+      ],
+    },
+    {
+      id: "PBI8",
+      sprint: 3,
+      name: "VIEW-LECTURER-SCHEDULE",
+      title: "ตารางสอนอาจารย์และคอลัมน์ Instructor",
+      owners: ["Alan"],
+      tests: "TC-PBI8-1 ถึง TC-PBI8-9",
+      summary: "เพิ่มข้อมูล lecturers 26 คน / schedule_lecturer 70 แถว, หน้า Teaching Schedule ของอาจารย์ และคอลัมน์ Instructor ในตารางนักศึกษา",
+      details: [
+        "GET /api/v1/lecturers/{username}/schedules คืนตารางสอนของอาจารย์เรียงตาม PBI1",
+        "year-level schedules เพิ่ม lecturers: [{ id, firstName, lastName }] เรียงตาม lecturer id (ไม่มีผู้สอนตอบ [])",
+        "เพิ่มคอลัมน์ Instructor ระหว่าง Room กับ Remarks ใน My Schedule และ Courses to Choose (หลายชื่อคั่นด้วย ', ')",
+      ],
+      traps: [
+        "Public GET /api/v1/schedules ห้ามเพิ่ม lecturers",
+        "หน้า Courses ของอาจารย์ห้ามเรียก student endpoints และต้องแยกกรณี 'ไม่มี record' กับ 'ไม่มีชั้นเรียน'",
+      ],
+    },
+    {
+      id: "PBI9",
+      sprint: 3,
+      name: "VALIDATE-REQUESTS",
+      title: "ตรวจสอบ input ทุก endpoint และ error แบบ application/problem+json",
+      owners: ["Beam"],
+      tests: "TC-PBI9-1 ถึง TC-PBI9-10",
+      summary: "Validation path/query/body ครบทุก field, ตอบ 400–499 เป็น application/problem+json และล้าง yearLevel ที่ผิดในหน้า Home",
+      details: [
+        "ตรวจ yearLevel (1–4), studentGroup (A/B), studentId (11 หลัก), courseId (int 1..2147483647), section (int 1..99), JSON object, query ซ้ำ",
+        "รายงานทุก field ที่ผิดรวมไว้ใน errors ของ 400; request ที่ไม่ผ่านต้องไม่แก้ข้อมูล",
+        "ลำดับตรวจร่วมกับ PBI10: 401 → 403 → 400 → 404 → 409",
+        "frontend/app.js: ถ้า ?yearLevel= ผิด ให้เลือก All และลบ parameter ที่ผิดโดยไม่ reload",
+      ],
+      traps: [
+        "PUT ต้องตรวจ selection-not-found ก่อน section-not-found",
+        "POST ต้องตรวจ already-selected ก่อน schedule-clash",
+        "Content-Type ของ error 400–499 ต้องเป็น application/problem+json",
+      ],
+    },
+    {
+      id: "PBI10",
+      sprint: 3,
+      name: "PROTECT-API",
+      title: "ป้องกัน API ด้วย Keycloak JWT / JWKS และ Role Guard",
+      owners: ["Dragon"],
+      tests: "TC-PBI10-1 ถึง TC-PBI10-11",
+      summary: "ตรวจ signature ด้วย JWKS, iss, exp, azp (= TEAM-CODE), role และเจ้าของข้อมูล พร้อมแนบ/ต่ออายุ Bearer token จาก Frontend",
+      details: [
+        "Protected: /students/* (role student + preferred_username ตรง studentId), /lecturers/* (role lecturer + username ตรงกัน), /year-levels/* (student หรือ lecturer)",
+        "Public: GET /health, GET /schedules, GET /semester",
+        "ไม่มี/ผิด token → 401; role หรือเจ้าของข้อมูลไม่ตรง → 403",
+        "Frontend ต่ออายุ token ก่อนส่ง (เช่น updateToken(30)) และถ้าต่อไม่ได้ให้ Sign In ใหม่กลับ URL เดิมรวม query",
+      ],
+      traps: [
+        "Auth middleware ต้องทำงานก่อน validation middleware เพื่อให้ลำดับเป็น 401 → 403 → 400",
+        "ได้ 401/403 บนหน้าเว็บให้ใช้ PBI1 error dialog",
+      ],
+    },
+    {
+      id: "PBI11",
+      sprint: 3,
+      name: "WARN-SELECTION-CLASH",
+      title: "แจ้งเตือนเวลาเรียนชนกันตอน Select / Change",
+      owners: ["Beam"],
+      tests: "TC-PBI11-1 ถึง TC-PBI11-14",
+      summary: "ตรวจวัน+เวลา+สัปดาห์ทับกัน ตอบ 409 schedule-clash พร้อม clash dialog ที่ให้กด Select/Change anyway (acceptClash: true)",
+      details: [
+        "ชนเมื่อ 3 เงื่อนไขพร้อมกัน: วันตรงกัน + เวลาทับกัน (startA < endB && startB < endA) + ช่วงสัปดาห์ทับกัน (startWeekA <= endWeekB && startWeekB <= endWeekA)",
+        "ตอบ 409 type 'schedule-clash' พร้อม clashes เรียงตาม API โดยยังไม่บันทึก; ส่ง acceptClash: true เพื่อยืนยัน",
+        "Frontend เพิ่ม askClash() ใน dialogs.js แสดง 'This section overlaps:', รายการที่ชน, ปุ่ม Select anyway / Change anyway / Cancel",
+      ],
+      traps: [
+        "เวลาต่อกันพอดี (เช่น 12:30 กับ 12:30) ไม่ถือว่าชน; สัปดาห์ไม่ทับกันไม่ชน",
+        "Change ต้องไม่นับ section เดิมของ course นั้นมาชนกับตัวเอง และ PUT section เดิมต้องตอบ 200 โดยไม่ตรวจ clash",
+        "section ที่มีหลายวันต้องตรวจ clash ครบทุกแถว",
+      ],
+    },
+    {
+      id: "PBI12",
+      sprint: 3,
+      name: "WEEKLY-TIMETABLE",
+      title: "ตารางเรียนรายสัปดาห์ (Sessions, Holidays, Semester)",
+      owners: ["Alan", "Beam", "Dragon"],
+      tests: "TC-PBI12-1 ถึง TC-PBI12-7 (API) + Frontend",
+      summary: "Dragon สร้างปฏิทินและ sessions 1,181 แถว, Beam ทำ API /semester และ /sessions?date=, Alan ทำหน้า Weekly Timetable",
+      details: [
+        "GET /api/v1/semester (public) คืน academicYear, semester, startDate, endDate",
+        "GET /api/v1/students/{id}/sessions?date=yyyy-mm-dd และ /lecturers/{username}/sessions?date= คืน weekStart, weekEnd, label, holidays, sessions",
+        "Sessions ของนักศึกษา = fixed + selected; อาจารย์ = เฉพาะที่สอน; เรียง date → startTime → id",
+        "Frontend สลับ Courses / Weekly Timetable (aria-pressed), รองรับ view/date ใน URL และ cache ผลตามสัปดาห์",
+      ],
+      traps: [
+        "generate-sessions ต้องรวมชั้นเรียนที่ตรงวันหยุด แต่ไม่สร้าง session ในวันของ exam_periods (ระวัง 26/10/2026 อยู่ใน W11 แต่เป็นวันสอบ!)",
+        "วันที่นอกภาคเรียนต้องรับได้โดยตอบ label: null และ sessions: []",
+        "ห้ามขอสัปดาห์เดิมซ้ำใน page load เดียว และห้ามสรุปว่าวันหยุด = ยกเลิกเรียน",
+      ],
+    },
+  ],
+
+  lessons: [
+    {
+      id: "lesson-1",
+      num: "บทที่ 1",
+      title: "Architecture & 4-Layer Backend",
+      subtitle: "เข้าใจภาพรวมโครงสร้างโค้ดและการไหลของ Request ตั้งแต่ Browser จนถึง MySQL",
+      blocks: [
+        {
+          type: "text",
+          heading: "ภาพรวมสถาปัตยกรรม 4 Containers + 4 Layers",
+          body: "ระบบ itb-csv แยกการทำงานชัดเจนเป็น 4 Docker Containers (Nginx Reverse Proxy, Frontend Static, Backend Express API, MySQL Database) และในฝั่ง Backend แยกโค้ดเป็น 4 ชั้นเพื่อให้แบ่งงานทีม 3 คนได้โดยไม่ทับกัน:",
+        },
+        {
+          type: "flow",
+          steps: [
+            { title: "Browser / Nginx", sub: "/intproj26/<TEAM-PATH>/" },
+            { title: "app.js + Middleware", sub: "Auth (401/403) → Validate (400)" },
+            { title: "routes/*.routes.js", sub: "จับคู่ Method + URL" },
+            { title: "controllers/*.controller.js", sub: "แกะ req → ส่ง res" },
+            { title: "services/*.service.js", sub: "Business Logic + Prisma" },
+            { title: "MySQL (utf8mb4)", sub: "courses, selections, sessions" },
+          ],
+        },
+        {
+          type: "callout",
+          tone: "warn",
+          title: "กฎสำคัญห้ามสลับ: TEAM-CODE vs TEAM-PATH",
+          body: "ตั้งแต่ Sprint 2 เป็นต้นไป Public URL, Nginx และ BASE_URL ต้องใช้ <TEAM-PATH> ส่วน GET /api/v1/health response, Keycloak clientId และ JWT azp ยังคงใช้ <TEAM-CODE> (เช่น ip26-zen) ห้ามสลับสองค่านี้เด็ดขาด",
+        },
+        {
+          type: "code",
+          label: "backend/app.js — โครงสร้างการเชื่อม Middleware และ Routes",
+          code: `const app = express();
+app.disable("x-powered-by");
+app.use(express.json());
+
+// Public endpoints (ไม่ต้องส่ง Bearer token)
+app.get("/api/v1/health", (_req, res) => {
+  res.status(200).json({ status: "ok", team: teamCode });
+});
+app.use("/api/v1/schedules", createScheduleRouter(prisma));
+app.use("/api/v1/semester", createSemesterRouter(prisma));
+
+// Protected endpoints (Sprint 3: Auth ก่อน Validation เสมอ)
+app.use("/api/v1/year-levels", requireToken, createYearLevelRouter(prisma));
+app.use("/api/v1/students", requireToken, createStudentRouter(prisma));
+app.use("/api/v1/lecturers", requireToken, createLecturerRouter(prisma));`,
+        },
+      ],
+    },
+    {
+      id: "lesson-2",
+      num: "บทที่ 2",
+      title: "Database, Prisma & Seeding",
+      subtitle: "ออกแบบ Schema, ความสัมพันธ์ตาราง, UTF-8 และ Seed ที่รันซ้ำได้ไม่ซ้ำแถว",
+      blocks: [
+        {
+          type: "text",
+          heading: "หลักการออกแบบ Prisma Schema ของโปรเจกต์นี้",
+          body: "โปรเจกต์ใช้ Prisma ORM เชื่อม MySQL 8 (charset utf8mb4 เพื่อไม่ให้ remarks ภาษาไทย/สัญลักษณ์เพี้ยน) โดยใช้ชื่อ Model/Field เป็น camelCase และ map ลงชื่อตาราง/คอลัมน์ snake_case ด้วย @map และ @@map",
+        },
+        {
+          type: "code",
+          label: "prisma/schema.prisma — ตัวอย่าง Composite Key และ Time(0)",
+          code: `model CourseSchedule {
+  id           Int           @id @default(autoincrement())
+  courseId     Int           @map("course_id")
+  course       Course        @relation(fields: [courseId], references: [id])
+  section      Int
+  startWeek    Int           @map("start_week")
+  endWeek      Int           @map("end_week")
+  dayOfWeek    DayOfWeek     @map("day_of_week")
+  startTime    DateTime      @map("start_time") @db.Time(0)
+  endTime      DateTime      @map("end_time") @db.Time(0)
+  room         String?       @db.VarChar(20)
+  studentGroup StudentGroup? @map("student_group")
+  remarks      String?       @db.VarChar(255)
+
+  @@map("courses_schedule")
+}
+
+model Selection {
+  studentId String   @map("student_id") @db.Char(11)
+  courseId  Int      @map("course_id")
+  section   Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
+
+  @@id([studentId, courseId]) // นักศึกษา 1 คนเลือก 1 วิชาได้สูงสุด 1 section
+  @@map("selections")
+}`,
+        },
+        {
+          type: "callout",
+          tone: "info",
+          title: "ข้อควรระวังเรื่อง TIME(0) และ Idempotent Seed",
+          body: "Prisma อ่านคอลัมน์ @db.Time(0) กลับมาเป็น Date object (UTC) ดังนั้น Backend ต้องแปลงเป็น string 'HH:MM' ด้วย getUTCHours()/getUTCMinutes() เสมอ และใน prisma/seed.js ต้องใช้ upsert ตาม original ID เพื่อรันซ้ำได้โดยไม่เกิดข้อมูลซ้ำ",
+        },
+      ],
+    },
+    {
+      id: "lesson-3",
+      num: "บทที่ 3",
+      title: "Frontend Vanilla JS & Dialogs",
+      subtitle: "การ Cache, URL Routing ด้วย pushState, Bundle build:js และรูปแบบ Dialogs",
+      blocks: [
+        {
+          type: "text",
+          heading: "กฎเหล็กฝั่ง Frontend ของ INT504",
+          body: "Frontend เขียนด้วย HTML5 + Vanilla JS + Tailwind CSS โดยหน้า Guest (frontend/app.js) โหลด /api/v1/schedules เพียงครั้งเดียวแล้วกรองจาก cache ในหน่วยความจำ ส่วนหน้าส่วนตัว (frontend/my-schedule.html) เขียน source แยกโมดูลใน frontend/scripts/ แล้ว bundle เป็น frontend/my-schedule.js ด้วย npm run build:js",
+        },
+        {
+          type: "callout",
+          tone: "warn",
+          title: "ห้ามแก้ frontend/my-schedule.js ด้วยมือ!",
+          body: "ไฟล์ frontend/my-schedule.js เป็นไฟล์ผลลัพธ์จาก esbuild (npm run build:js) ให้แก้เฉพาะไฟล์ใน frontend/scripts/*.js แล้วค่อย build ใหม่เสมอ",
+        },
+        {
+          type: "code",
+          label: "ความต่างของ <dialog> 2 แบบในระบบ (PBI 1/4 vs PBI 5–7/11)",
+          code: `// 1) Loading Error Dialog (PBI 1 & PBI 4): ห้ามปิดด้วย Esc และไม่มีปุ่ม OK
+errorDialog.addEventListener("cancel", (event) => {
+  event.preventDefault();
+});
+
+// 2) Message / Confirm / Clash Dialog (PBI 5–7, 11): ปิดด้วย OK / Cancel / Esc ได้
+function openRemoveDialog(item) {
+  question.textContent = \`Remove \${item.code} \${item.title} section \${item.section}?\`;
+  return new Promise((resolve) => {
+    const onClose = () => {
+      dialog.removeEventListener("close", onClose);
+      resolve(dialog.returnValue === "remove");
+    };
+    dialog.addEventListener("close", onClose);
+    dialog.returnValue = "cancel";
+    dialog.showModal();
+  });
+}`,
+        },
+      ],
+    },
+    {
+      id: "lesson-4",
+      num: "บทที่ 4",
+      title: "Business Logic: Sort, Fixed & Profile",
+      subtitle: "สูตรคำนวณรหัสนักศึกษา 11 หลัก, ลำดับการ Sort 6 ระดับ และกฎ fixed vs option",
+      blocks: [
+        {
+          type: "text",
+          heading: "1. ลำดับการ Sort มาตรฐาน (PBI 1 — ใช้ทุกตาราง)",
+          body: "ทุกตารางต้องเรียงตาม 6 ระดับนี้เสมอ: course.yearLevel → course.id → section → dayOfWeek (MONDAY=1..SUNDAY=7) → startTime ('HH:MM') → schedule.id",
+        },
+        {
+          type: "text",
+          heading: "2. สูตรแปลงรหัสนักศึกษา 11 หลัก (PBI 4)",
+          body: "รหัสเช่น 68504504010 แบ่งเป็น 3 ท่อน: entryYear = '68' (2 หลักแรก), programCode = '504504' (6 หลักกลาง ตรงกับ academic_settings), studentNo = 10 (3 หลักท้าย เช็กช่วง fromNo..toNo ใน student_group_ranges) และคำนวณชั้นปีด้วย yearLevel = (currentAcademicYear % 100) - entryYear + 1 (ปี 2569: 69 - 68 + 1 = ปี 2)",
+        },
+        {
+          type: "text",
+          heading: "3. กฎแยกวิชา fixed กับ option และจำนวนแถวอ้างอิง (เมื่อยังไม่มี selections)",
+          body: "ต้องนับจำนวน distinct sections ของแต่ละ course จากทุกแถวของชั้นปีก่อน แล้วค่อยกรองตาม studentGroup (เก็บทุก option และเก็บ fixed เฉพาะที่ studentGroup ตรงหรือเป็น null):",
+        },
+        {
+          type: "table",
+          headers: ["ชั้นปี", "API ทั้งปี", "API กลุ่ม A/B", "My Schedule (fixed)", "Courses to Choose (option)"],
+          rows: [
+            ["Year 1", "27 แถว", "18 แถว", "9 แถว", "9 แถว"],
+            ["Year 2", "17 แถว", "11 แถว", "7 แถว", "4 แถว"],
+            ["Year 3", "28 แถว", "28 แถว", "0 แถว", "28 แถว"],
+            ["Year 4", "20 แถว", "20 แถว", "3 แถว", "17 แถว"],
+          ],
+        },
+      ],
+    },
+    {
+      id: "lesson-5",
+      num: "บทที่ 5",
+      title: "Sprint 3: Validation & Problem Details (PBI9)",
+      subtitle: "การตรวจ input ทุกจุด, การรวม error หลาย field และลำดับตรวจ 401→403→400→404→409",
+      blocks: [
+        {
+          type: "text",
+          heading: "มาตรฐาน application/problem+json (RFC 7807)",
+          body: "ใน Sprint 3 ทุก error ช่วง 400–499 ต้องตั้ง Content-Type เป็น application/problem+json และคืนโครงสร้างที่มี type, title, status ชัดเจน เพื่อให้ทั้งทีม (Beam + Dragon + Alan) และชุดทดสอบอ่านได้ตรงกัน",
+        },
+        {
+          type: "code",
+          label: "backend/utils/problem.js — ตัวช่วยส่ง Problem Details กลางของทีม",
+          code: `function sendProblem(res, { status, type, title, detail, ...extra }) {
+  return res
+    .status(status)
+    .type("application/problem+json")
+    .json({
+      type,
+      title,
+      status,
+      ...(detail !== undefined ? { detail } : {}),
+      ...extra,
+    });
+}
+
+// ตัวอย่างการใช้งาน:
+// sendProblem(res, { status: 400, type: "validation-error", title: "Validation Error", errors })
+// sendProblem(res, { status: 409, type: "schedule-clash", title: "Schedule Clash", clashes })`,
+        },
+        {
+          type: "callout",
+          tone: "ok",
+          title: "ลำดับการตรวจสอบที่ห้ามสลับเด็ดขาด",
+          body: "401 Unauthorized (token ไม่มี/ผิด) → 403 Forbidden (role/เจ้าของข้อมูลไม่ตรง) → 400 Bad Request (format/range ผิด, รายงานครบทุก field) → 404 Not Found (PUT เช็ก selection-not-found ก่อน section-not-found) → 409 Conflict (POST เช็ก already-selected ก่อน schedule-clash)",
+        },
+      ],
+    },
+    {
+      id: "lesson-6",
+      num: "บทที่ 6",
+      title: "Sprint 3: Clash, JWT Auth & Sessions (PBI10–12)",
+      subtitle: "อัลกอริทึมตรวจเวลาชน 3 เงื่อนไข, Keycloak JWKS และตารางรายสัปดาห์ 1,181 sessions",
+      blocks: [
+        {
+          type: "text",
+          heading: "1. สูตรตรวจเวลาเรียนชนกัน (PBI 11)",
+          body: "สองแถวตารางเรียน A และ B จะชนกันก็ต่อเมื่อเข้าเงื่อนไขครบทั้ง 3 ข้อพร้อมกัน (ใช้เครื่องหมาย < กับเวลา เพื่อให้ 12:30 ต่อ 12:30 ไม่ชน แต่ใช้ <= กับสัปดาห์ เพราะเรียนสัปดาห์เดียวกันถือว่าทับ):",
+        },
+        {
+          type: "code",
+          label: "backend/services/clash.service.js — ฟังก์ชันเช็กการชนของ 2 schedule rows",
+          code: `function isScheduleClash(a, b) {
+  // 1) วันเดียวกัน
+  if (a.dayOfWeek !== b.dayOfWeek) return false;
+
+  // 2) เวลาทับกัน (ต่อกันพอดีเช่น 12:30 กับ 12:30 ไม่ชน)
+  const timeOverlap = a.startTime < b.endTime && b.startTime < a.endTime;
+  if (!timeOverlap) return false;
+
+  // 3) ช่วงสัปดาห์มีส่วนร่วมกัน
+  const weekOverlap = a.startWeek <= b.endWeek && b.startWeek <= a.endWeek;
+  return weekOverlap;
+}`,
+        },
+        {
+          type: "text",
+          heading: "2. การป้องกัน API ด้วย JWT / JWKS (PBI 10)",
+          body: "Dragon ทำ middleware ตรวจลายเซ็น JWT จาก JWKS endpoint ของ Keycloak realm itb-csv ตรวจ iss, exp และ azp === TEAM-CODE จากนั้นแยก guard: students/* ต้องเป็น role student + preferred_username ตรง studentId; lecturers/* ต้องเป็น role lecturer + username ตรงกัน; year-levels/* รับได้ทั้งสอง role",
+        },
+        {
+          type: "text",
+          heading: "3. การสร้าง Sessions 1,181 แถว และ API รายสัปดาห์ (PBI 12)",
+          body: "Dragon สร้างตาราง academic_weeks (19 แถว), holidays (7 แถว), exam_periods (3 แถว) และ generate sessions 1,181 แถว (id 1–1181) โดยรวมคาบที่ตรงวันหยุดแต่ตัดคาบที่ตรง exam_periods ออก (ระวังวันที่ 26/10/2026 อยู่ใน W11 แต่เป็นวันสอบ) จากนั้น Beam นำมาเปิด GET /api/v1/semester และ GET .../sessions?date=yyyy-mm-dd ให้ Alan แสดงบน Weekly Timetable",
+        },
+      ],
+    },
+    {
+      id: "lesson-7",
+      num: "บทที่ 7",
+      title: "Docker Compose, Nginx & VM Deploy",
+      subtitle: "โครงสร้าง 4 Containers, Reverse Proxy ใต้ TEAM-PATH และขั้นตอนอัปเดตบน VM",
+      blocks: [
+        {
+          type: "text",
+          heading: "โครงสร้าง 4 Containers ตาม Technical Requirement (TR-02)",
+          body: "บนเครื่อง VM ของทีมต้องมีอย่างน้อย 4 containers แยกกันชัดเจน: proxy (Nginx publish port 443), frontend (เสิร์ฟไฟล์ static + bundle), backend (Node.js + Express + @prisma/client), และ database (MySQL 8 utf8mb4)",
+        },
+        {
+          type: "code",
+          label: "ขั้นตอน Deploy หลัง Merge บน VM (ห้ามลบ DB Volume!)",
+          code: `# 1. ดึงโค้ดล่าสุดบน VM
+git pull origin main
+
+# 2. Build frontend & backend images ใหม่ (รวมไฟล์ที่เพิ่งเพิ่ม)
+docker compose build backend frontend
+
+# 3. รัน containers จาก images ใหม่
+docker compose up -d
+
+# 4. รัน migration และ seed (upsert ซ้ำได้)
+docker compose exec backend npm run prisma:migrate
+docker compose exec backend npm run prisma:seed
+
+# 5. ตรวจ created time ของ containers และทดสอบ public health endpoint
+docker compose ps`,
+        },
+        {
+          type: "callout",
+          tone: "warn",
+          title: "ข้อห้ามสำคัญบน VM และ Course Runner Gate",
+          body: "ห้ามลบ database volume, ห้ามแก้หรือลบบัญชี int504check / int504, ห้าม commit .env หรือ TEAM-PATH จริงลง public repo และต้องทดสอบผ่าน Run Now บน Sprint Portal (เรียกได้ทุก 15 นาที ปิดวันจันทร์ 17:30–18:30 และ 23:30–00:30)",
+        },
+      ],
+    },
+  ],
+
+  apis: [
+    {
+      sprint: 1,
+      method: "GET",
+      path: "/api/v1/health",
+      auth: "Public",
+      owner: "Beam",
+      statuses: ["200"],
+      desc: "ตรวจสอบสถานะเซิร์ฟเวอร์และรหัสทีม (ต้องใช้ TEAM-CODE เสมอ)",
+      sample: `{ "status": "ok", "team": "ip26-zen" }`,
+    },
+    {
+      sprint: 1,
+      method: "GET",
+      path: "/api/v1/schedules?yearLevel=1..4",
+      auth: "Public",
+      owner: "Beam",
+      statuses: ["200", "400"],
+      desc: "คืนตารางเรียนสาธารณะ 92 แถว (หรือกรองตามชั้นปี 1–4) เรียง 6 ระดับ ห้ามมี room/fixed/lecturers",
+      sample: `[{ "id": 1, "courseId": 1, "code": "INT100", "title": "Design Thinking", "type": "CORE", "yearLevel": 1, "section": 1, "startWeek": 1, "endWeek": 15, "dayOfWeek": "MONDAY", "startTime": "09:30", "endTime": "12:30", "studentGroup": "A", "remarks": null }]`,
+    },
+    {
+      sprint: 2,
+      method: "GET",
+      path: "/api/v1/students/{studentId}",
+      auth: "Bearer (student + self)",
+      owner: "Alan",
+      statuses: ["200", "400", "401", "403", "404"],
+      desc: "คำนวณชั้นปีและกลุ่มจาก academic_settings & student_group_ranges",
+      sample: `{ "studentId": "68504504010", "yearLevel": 2, "studentGroup": "A" }`,
+    },
+    {
+      sprint: 2,
+      method: "GET",
+      path: "/api/v1/year-levels/{n}/schedules?studentGroup=A|B",
+      auth: "Bearer (student | lecturer)",
+      owner: "Beam / Alan",
+      statuses: ["200", "400", "401", "403"],
+      desc: "คืนตารางเรียนของชั้นปีพร้อม room, fixed (Sprint 2) และ lecturers[] (Sprint 3 PBI8)",
+      sample: `[{ "...publicFields", "room": "CB2301", "fixed": true, "lecturers": [{ "id": 1, "firstName": "...", "lastName": "..." }] }]`,
+    },
+    {
+      sprint: 2,
+      method: "GET",
+      path: "/api/v1/students/{studentId}/selections",
+      auth: "Bearer (student + self)",
+      owner: "Dragon",
+      statuses: ["200", "400", "401", "403", "404"],
+      desc: "คืนรายการ section ที่นักศึกษาเลือกไว้ เรียงตาม courseId (หรือ [] ถ้ายังว่าง)",
+      sample: `[{ "studentId": "68504504010", "courseId": 45, "section": 9, "createdAt": "2026-11-18T00:00:00.000Z", "updatedAt": "2026-11-18T00:00:00.000Z" }]`,
+    },
+    {
+      sprint: 2,
+      method: "POST",
+      path: "/api/v1/students/{studentId}/selections",
+      auth: "Bearer (student + self)",
+      owner: "Beam",
+      statuses: ["201", "400", "401", "403", "404", "409"],
+      desc: "เลือก section ใหม่ (Sprint 3 เพิ่ม clash check + acceptClash: true ใน body)",
+      sample: `// Body: { "courseId": 45, "section": 9, "acceptClash": false }\n// 409 clash -> { "type": "schedule-clash", "title": "...", "status": 409, "clashes": [...] }`,
+    },
+    {
+      sprint: 2,
+      method: "PUT",
+      path: "/api/v1/students/{studentId}/selections/{courseId}",
+      auth: "Bearer (student + self)",
+      owner: "Dragon / Beam",
+      statuses: ["200", "400", "401", "403", "404", "409"],
+      desc: "เปลี่ยน section ในครั้งเดียว (ส่ง section เดิมตอบ 200 คง updatedAt เดิม; Sprint 3 เพิ่ม clash check)",
+      sample: `// Body: { "section": 10, "acceptClash": false }`,
+    },
+    {
+      sprint: 2,
+      method: "DELETE",
+      path: "/api/v1/students/{studentId}/selections/{courseId}",
+      auth: "Bearer (student + self)",
+      owner: "Dragon",
+      statuses: ["204", "400", "401", "403", "404"],
+      desc: "ลบ section ที่เลือก (204 ต้องไม่มี response body)",
+      sample: `// 204 No Content (empty body)`,
+    },
+    {
+      sprint: 2,
+      method: "DELETE",
+      path: "/api/v1/students/{studentId}/selections",
+      auth: "Bearer (student + self)",
+      owner: "Dragon",
+      statuses: ["204", "400", "401", "403", "404"],
+      desc: "ล้าง selections ทั้งหมดของนักศึกษาสำหรับชุดทดสอบ (204 แม้เริ่มว่าง)",
+      sample: `// 204 No Content (empty body)`,
+    },
+    {
+      sprint: 3,
+      method: "GET",
+      path: "/api/v1/lecturers/{username}/schedules",
+      auth: "Bearer (lecturer + self)",
+      owner: "Alan",
+      statuses: ["200", "400", "401", "403", "404"],
+      desc: "คืนตารางสอนของอาจารย์ผ่านตาราง schedule_lecturer เรียงแบบ PBI1",
+      sample: `[{ "id": 12, "code": "INT201", "title": "...", "yearLevel": 2, "section": 1, "room": "CB2304", "..." : "..." }]`,
+    },
+    {
+      sprint: 3,
+      method: "GET",
+      path: "/api/v1/semester",
+      auth: "Public",
+      owner: "Beam",
+      statuses: ["200"],
+      desc: "คืนข้อมูลภาคเรียนปัจจุบันสำหรับ Weekly Timetable",
+      sample: `{ "academicYear": 2569, "semester": 1, "startDate": "2026-08-10", "endDate": "2026-12-18" }`,
+    },
+    {
+      sprint: 3,
+      method: "GET",
+      path: "/api/v1/students/{id}/sessions?date=yyyy-mm-dd",
+      auth: "Bearer (student + self)",
+      owner: "Beam",
+      statuses: ["200", "400", "401", "403", "404"],
+      desc: "คืนตารางรายสัปดาห์ จันทร์–อาทิตย์ (fixed + selected), วันหยุด และ label สัปดาห์ (มี endpoint เดียวกันสำหรับ /lecturers/{username}/sessions)",
+      sample: `{ "weekStart": "2026-11-16", "weekEnd": "2026-11-22", "label": "W14", "holidays": [], "sessions": [...] }`,
+    },
+  ],
+
+  dbTables: [
+    { name: "courses", sprint: 1, rows: "51 แถว", keys: "PK id, UNIQUE(code, title)", cols: "id, code(6), title(100), type(CORE|ELECTIVE), year_level" },
+    { name: "courses_schedule", sprint: 1, rows: "92 → 97 แถว (S3)", keys: "PK id, FK course_id", cols: "id, course_id, section, start_week, end_week, day_of_week, start_time, end_time, room, student_group, remarks" },
+    { name: "academic_settings", sprint: 2, rows: "1 แถว", keys: "PK id", cols: "id, current_academic_year (2569), current_semester (1), program_code ('504504'), program_name ('BSc.IT') [+ start/end date S3]" },
+    { name: "student_group_ranges", sprint: 2, rows: "8 แถว", keys: "PK id, UNIQUE(entry_year, student_group)", cols: "id, entry_year (66–69), student_group (A|B), from_no, to_no" },
+    { name: "selections", sprint: 2, rows: "เริ่มว่าง", keys: "Composite PK(student_id, course_id)", cols: "student_id(11), course_id, section, created_at, updated_at" },
+    { name: "lecturers & schedule_lecturer", sprint: 3, rows: "26 / 70 แถว", keys: "PK id, FK schedule_id + lecturer_id", cols: "ข้อมูลผู้สอน (username, firstName, lastName) และตารางเชื่อมความสัมพันธ์ M:N กับ schedules" },
+    { name: "academic_weeks / holidays / exam_periods", sprint: 3, rows: "19 / 7 / 3 แถว", keys: "PK id", cols: "ปฏิทินการศึกษา, วันหยุดนักขัตฤกษ์ และช่วงสอบ (ใช้ตอน generate sessions)" },
+    { name: "sessions", sprint: 3, rows: "1,181 แถว (id 1–1181)", keys: "PK id, UNIQUE(schedule_id, date)", cols: "คาบเรียนรายวันที่แตกจาก courses_schedule + teaching weeks (รวม holiday แต่ตัด exam_periods)" },
+  ],
+
+  studentRanges: [
+    { entryYear: 69, studentGroup: "A", fromNo: 1, toNo: 70 },
+    { entryYear: 69, studentGroup: "B", fromNo: 71, toNo: 140 },
+    { entryYear: 68, studentGroup: "A", fromNo: 1, toNo: 67 },
+    { entryYear: 68, studentGroup: "B", fromNo: 68, toNo: 135 },
+    { entryYear: 67, studentGroup: "A", fromNo: 1, toNo: 65 },
+    { entryYear: 67, studentGroup: "B", fromNo: 66, toNo: 130 },
+    { entryYear: 66, studentGroup: "A", fromNo: 1, toNo: 60 },
+    { entryYear: 66, studentGroup: "B", fromNo: 61, toNo: 120 },
+  ],
+
+  quiz: [
+    {
+      q: "ข้อใดใช้ค่า <TEAM-CODE> (ไม่ใช่ <TEAM-PATH>) ตามข้อกำหนดตั้งแต่ Sprint 2?",
+      options: [
+        "Public URL บนเบราว์เซอร์ (/intproj26/.../)",
+        "Nginx reverse proxy path prefix",
+        "GET /api/v1/health response, Keycloak clientId และ JWT azp",
+        "BASE_URL ของชุดทดสอบ E2E",
+      ],
+      answer: 2,
+      explain: "Public URL, Nginx และ BASE_URL ใช้ TEAM-PATH ส่วน health response, Keycloak clientId และ JWT azp ยังคงใช้ TEAM-CODE เสมอ",
+    },
+    {
+      q: "ในหน้า Home (PBI 1–2) เมื่อผู้ใช้คลิกเปลี่ยนจาก All → Year 2 → Year 3 หน้าเว็บควรยิง GET /api/v1/schedules กี่ครั้ง?",
+      options: [
+        "3 ครั้ง (ทุกครั้งที่เปลี่ยนปุ่ม)",
+        "1 ครั้งตอนเปิดหน้าเท่านั้น แล้วกรองจาก cache ในหน่วยความจำ",
+        "2 ครั้ง (เฉพาะตอนกด Year 2 และ Year 3)",
+        "0 ครั้ง เพราะดึงจาก localStorage",
+      ],
+      answer: 1,
+      explain: "ตาม TR-06 หน้า Guest ต้องดึงทุก Schedule เพียงครั้งเดียวต่อการเปิดหน้า จากนั้นกรองจาก cache โดยไม่ fetch ใหม่และไม่ reload หน้า",
+    },
+    {
+      q: "Public API GET /api/v1/schedules ต้องเรียงวันและคืน field อย่างไร?",
+      options: [
+        "เรียงวันตามตัวอักษร (FRIDAY ก่อน) และคืน room ด้วย",
+        "เรียงวันตามปฏิทิน (MONDAY ถึง SUNDAY) และห้ามคืน room หรือ fixed",
+        "เรียงตาม schedule.id อย่างเดียว และคืน room เป็น null",
+        "เรียงตาม course.code และคืน lecturers[] ด้วย",
+      ],
+      answer: 1,
+      explain: "ต้องเรียงตาม yearLevel → courseId → section → วัน (Monday..Sunday) → startTime → id และ Public API ห้ามส่ง room, fixed หรือ lecturers",
+    },
+    {
+      q: "รหัสนักศึกษา 68504504068 ในปีการศึกษา 2569 (programCode = 504504) จะได้ผลลัพธ์จาก GET /api/v1/students/{id} เป็นอะไร?",
+      options: [
+        "200 { yearLevel: 2, studentGroup: 'A' }",
+        "200 { yearLevel: 2, studentGroup: 'B' }",
+        "200 { yearLevel: 1, studentGroup: 'B' }",
+        "404 Not Found",
+      ],
+      answer: 1,
+      explain: "entryYear 68 → yearLevel = 69 - 68 + 1 = 2 และปี 68 กลุ่ม B คือเลขลำดับ 068–135 ดังนั้น 068 คือ Year 2 · Group B",
+    },
+    {
+      q: "วิชาประเภท CORE ที่ไม่มี studentGroup (null) และมี 2 sections แตกต่างกัน จัดเป็น fixed หรือ option?",
+      options: [
+        "เป็น fixed เสมอเพราะเป็นวิชา CORE",
+        "เป็น option เพราะเป็น CORE ไม่มีกลุ่มที่มีหลาย section",
+        "เป็น fixed เฉพาะ section 1",
+        "ขึ้นอยู่กับว่านักศึกษาอยู่ Group A หรือ B",
+      ],
+      answer: 1,
+      explain: "กฎ PBI 4: CORE ที่มีกลุ่ม A/B หรือ CORE ไม่มีกลุ่มที่มี section เดียว = fixed; ส่วน CORE ไม่มีกลุ่มที่มีหลาย section และ ELECTIVE = option",
+    },
+    {
+      q: "ตอนทำ PBI 4 หากเรียก GET /api/v1/students/{id} ได้ 200 แต่ GET /api/v1/students/{id}/selections ได้ 404 หน้าเว็บต้องแสดงอะไร?",
+      options: [
+        "แสดงข้อความ Your account is not a student of the BSc.IT program.",
+        "แสดง loading error dialog แบบ PBI 1 ('There is a problem. Please try again later.')",
+        "ซ่อนตารางแล้วแสดงตารางว่าง",
+        "Redirect กลับไปหน้า Home",
+      ],
+      answer: 1,
+      explain: "เฉพาะ Profile API 404 เท่านั้นที่แสดง not-student — หาก selections หรือ year-level schedules พังตอนโหลดหน้า ให้แสดง loading error dialog แบบ PBI 1",
+    },
+    {
+      q: "ใน PBI 7 (Change Section) หากส่ง PUT ด้วย section เดิมที่นักศึกษาเลือกไว้อยู่แล้ว Backend ต้องตอบอย่างไร?",
+      options: [
+        "409 Conflict (already-selected)",
+        "400 Bad Request",
+        "200 OK โดยไม่เปลี่ยนข้อมูล รวมถึง updatedAt ต้องคงเดิม (และไม่ตรวจ clash)",
+        "200 OK พร้อมอัปเดต updatedAt เป็นเวลาปัจจุบัน",
+      ],
+      answer: 2,
+      explain: "PUT section เดิมต้องเป็น idempotent: ตอบ 200 OK โดยคงทั้ง createdAt และ updatedAt เดิมไว้ และใน Sprint 3 ไม่ต้องตรวจ clash ด้วย",
+    },
+    {
+      q: "ลำดับการตรวจสอบ Error ที่ถูกต้องใน Sprint 3 (PBI 9 + PBI 10 + PBI 11) คือข้อใด?",
+      options: [
+        "400 → 401 → 403 → 404 → 409",
+        "401 → 403 → 400 → 404 → 409",
+        "404 → 400 → 401 → 403 → 409",
+        "401 → 400 → 403 → 409 → 404",
+      ],
+      answer: 1,
+      explain: "ต้องตรวจ Auth/Token (401) → Role/Self (403) → Input Validation (400) → Not Found (404) → Conflict (409)",
+    },
+    {
+      q: "ใน PBI 11 วิชา A เรียนวันจันทร์ 09:30–12:30 (สัปดาห์ 1–15) และวิชา B เรียนวันจันทร์ 12:30–15:30 (สัปดาห์ 1–15) ถือว่าชนกัน (schedule-clash) หรือไม่?",
+      options: [
+        "ชนกัน เพราะเวลา 12:30 ตรงกัน",
+        "ไม่ชนกัน เพราะเวลาต่อกันพอดีไม่ได้ทับซ้อนกัน (startA < endB && startB < endA เป็น false)",
+        "ชนกันเฉพาะวิชา CORE",
+        "ชนกันถ้าเรียนคนละห้อง",
+      ],
+      answer: 1,
+      explain: "เงื่อนไขเวลาทับกันใช้ strictly less than (startA < endB && startB < endA) ดังนั้น 12:30 ต่อ 12:30 ไม่ถือว่าชน",
+    },
+    {
+      q: "เมื่อ POST selection ใน Sprint 3 พบว่าเวลาชนกันและยังไม่ได้ส่ง acceptClash: true Backend ต้องทำอย่างไร?",
+      options: [
+        "บันทึกลง DB แล้วตอบ 201 พร้อม warning",
+        "ตอบ 409 (application/problem+json, type: schedule-clash) พร้อม clashes โดยยังไม่บันทึกลง DB",
+        "ตอบ 400 validation-error",
+        "ลบวิชาเก่าออกแล้วแทนที่ด้วยวิชาใหม่",
+      ],
+      answer: 1,
+      explain: "ต้องตอบ 409 type schedule-clash พร้อมรายการ clashes โดยยังไม่บันทึก จะบันทึกต่อเมื่อ client ส่ง request เดิมซ้ำพร้อม acceptClash: true",
+    },
+    {
+      q: "ใน PBI 12 การสร้าง sessions 1,181 แถว ต้องจัดการวันหยุด (holidays) และช่วงสอบ (exam_periods) อย่างไร?",
+      options: [
+        "ตัดออกทั้งวันหยุดและวันสอบ",
+        "รวมคาบเรียนที่ตรงวันหยุดไว้ใน sessions แต่ไม่สร้าง session ในวันของ exam_periods (รวมถึง 26/10/2026)",
+        "สร้าง session ทุกวันโดยไม่สนวันสอบ",
+        "เปลี่ยนวันหยุดให้ย้ายไปวันอาทิตย์อัตโนมัติ",
+      ],
+      answer: 1,
+      explain: "ระบบต้องยังสร้าง session ในวันหยุด (Frontend แสดง Note: Holiday แต่ห้ามสรุปว่ายกเลิกเรียน) แต่ห้ามสร้าง session ในช่วง exam_periods",
+    },
+    {
+      q: "หากต้องการแก้โค้ดในหน้า My Schedule (เช่น เพิ่ม clash dialog) ควรแก้ไฟล์ไหนและทำอะไรต่อ?",
+      options: [
+        "แก้ตรงๆ ใน frontend/my-schedule.js ได้เลย",
+        "แก้ใน frontend/scripts/*.js (และ my-schedule.html) แล้วรัน npm run build:js",
+        "แก้ใน backend/app.js อย่างเดียว",
+        "แก้ใน node_modules/keycloak-js",
+      ],
+      answer: 1,
+      explain: "frontend/scripts/ คือ source code ส่วน frontend/my-schedule.js เป็น bundle ที่สร้างจาก esbuild ผ่าน npm run build:js ห้ามแก้ไฟล์ bundle ด้วยมือ",
+    },
+  ],
+
+  resources: {
+    videos: [
+      {
+        category: "Frontend (Vanilla JS + DOM + Tailwind)",
+        items: [
+          { title: "Tailwind & JavaScript Project - Products Filtering UI (Traversy Media)", query: "Traversy Media Tailwind JavaScript Products Filtering UI", desc: "ฝึก filter รายการด้วย Vanilla JS + DOM + Tailwind CSS คล้ายหน้า Guest" },
+          { title: "Code a Real App with JavaScript & Tailwind (Tapascript)", query: "Tapascript Code a Real App with JavaScript Tailwind", desc: "ต่อ Fetch API + render DOM แบบไม่ใช้ framework" },
+          { title: "How to Easily Set Up Tailwind CSS with Vanilla JavaScript (James Q Quick)", query: "James Q Quick Set Up Tailwind CSS Vanilla JavaScript", desc: "ตั้งค่า Tailwind CLI กับโปรเจกต์ HTML/JS" },
+        ],
+      },
+      {
+        category: "Backend (Node.js + Express + Prisma + MySQL)",
+        items: [
+          { title: "สอนทำ CRUD ด้วย ExpressJS, NodeJS, Prisma เชื่อมต่อ MySQL (รอยไถ พัฒนา)", query: "รอยไถ พัฒนา ExpressJS Prisma MySQL CRUD", desc: "ภาษาไทย ครบตั้งแต่ Prisma migration, Express CRUD ถึงทดสอบ API" },
+          { title: "Prisma | สอนใช้ Prisma ทำ REST API เพื่อจัดการ Database (Theerakarn M.)", query: "Theerakarn M Prisma REST API", desc: "ภาษาไทย เจาะลึกการใช้งาน Prisma ORM" },
+          { title: "Backend with Node.js + Express + MySQL + PRISMA Crash Course", query: "Backend with Node.js Express MySQL PRISMA Crash Course", desc: "ภาษาอังกฤษ ปูพื้นฐาน REST API ครบจบในคลิปเดียว" },
+        ],
+      },
+      {
+        category: "Auth (Keycloak PKCE & JWT Verification)",
+        items: [
+          { title: "Keycloak JavaScript PKCE + Express JWT Verification", query: "Keycloak Nodejs Express PKCE JWT verification middleware", desc: "ดูแนวทางตั้ง public client (PKCE S256) และตรวจ Bearer token ด้วย JWKS" },
+        ],
+      },
+      {
+        category: "Docker Compose & Nginx Reverse Proxy",
+        items: [
+          { title: "Docker Compose Full Stack Web (MySQL, Node.js) | หมีไลฟ์โค้ด EP.81", query: "หมีไลฟ์โค้ด Docker Compose Full Stack Web MySQL Node.js", desc: "ภาษาไทย การผูก multi-container ด้วย Docker Compose" },
+          { title: "ใช้ Docker Deploy MySQL, API, Nginx ขึ้น Cloud", query: "ใช้ Docker Deploy MySQL API Nginx ขึ้น Cloud", desc: "ภาษาไทย การตั้ง Nginx reverse proxy หน้า API และ DB" },
+          { title: "Full NGINX Tutorial - Demo Project with Node.js, Docker", query: "Full NGINX Tutorial Demo Project Node.js Docker", desc: "ภาษาอังกฤษ เจาะลึก Nginx reverse proxy กับ Node.js Container" },
+        ],
+      },
+    ],
+    commands: [
+      { label: "รัน Backend & Frontend ในเครื่อง", cmd: "npm start" },
+      { label: "รัน Backend แบบ auto-reload (dev)", cmd: "npm run dev" },
+      { label: "รัน Unit Tests ของ Backend", cmd: "npm test" },
+      { label: "Build Tailwind CSS", cmd: "npm run build:css" },
+      { label: "Bundle Frontend Scripts (esbuild)", cmd: "npm run build:js" },
+      { label: "Generate Prisma Client + Migrate + Seed", cmd: "npm run prisma:generate && npm run prisma:migrate && npm run prisma:seed" },
+      { label: "Build & Start 4 Containers (Docker Compose)", cmd: "docker compose up -d --build" },
+      { label: "ทดสอบ Health API ผ่าน curl", cmd: "curl -s http://localhost:3000/api/v1/health" },
+    ],
+  },
+};

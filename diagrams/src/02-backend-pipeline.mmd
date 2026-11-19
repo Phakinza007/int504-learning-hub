@@ -1,0 +1,16 @@
+flowchart TD
+  Req["Incoming HTTP Request"] --> Pub{"Public Route?\n/health, /schedules, /semester"}
+  Pub -->|Yes| Val["validate-request.js\nCheck path / query / body"]
+  Pub -->|No| Auth["auth.js Middleware (PBI 10)\nVerify JWKS, iss, exp, azp"]
+
+  Auth -->|Missing / Invalid Token| E401["401 Unauthorized\napplication/problem+json"]
+  Auth -->|Wrong Role / Not Self| E403["403 Forbidden\napplication/problem+json"]
+  Auth -->|OK| Val
+
+  Val -->|Collect ALL invalid fields| E400["400 Bad Request\ntype: validation-error"]
+  Val -->|Valid| Ctrl["Routes -> Controllers\nParse params & body"]
+  Ctrl --> Svc["Services Layer\nBusiness Logic + Prisma"]
+
+  Svc -->|Resource Missing| E404["404 Not Found\nselection-not-found / section-not-found"]
+  Svc -->|Duplicate or Time Overlap| E409["409 Conflict\nalready-selected -> schedule-clash"]
+  Svc -->|Success| OK["200 / 201 / 204 Response"]

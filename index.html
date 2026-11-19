@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INT504 Learning & Project Hub — itb-csv (Group 44)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./styles.css">
+  <script defer src="./data/project-data.js"></script>
+  <script defer src="./app.js"></script>
+</head>
+<body>
+  <div id="backdrop" class="backdrop"></div>
+
+  <div class="app-shell">
+    <aside id="sidebar" class="sidebar" aria-label="Primary navigation">
+      <div class="brand">
+        <div class="brand-mark">44</div>
+        <div>
+          <div class="brand-title">INT504 Study Hub</div>
+          <div class="brand-sub">itb-csv · Sprint 1–3</div>
+        </div>
+      </div>
+
+      <nav class="nav-list" id="nav-list">
+        <button class="nav-btn active" data-view="overview" type="button">
+          <span class="nav-icon">🏠</span>
+          <span>ภาพรวม & ทีม</span>
+        </button>
+        <button class="nav-btn" data-view="diagrams" type="button">
+          <span class="nav-icon">✏️</span>
+          <span>Excalidraw Diagrams</span>
+          <span class="nav-badge">6</span>
+        </button>
+        <button class="nav-btn" data-view="lessons" type="button">
+          <span class="nav-icon">📚</span>
+          <span>บทเรียน 7 บท</span>
+          <span class="nav-badge">7</span>
+        </button>
+        <button class="nav-btn" data-view="pbis" type="button">
+          <span class="nav-icon">✅</span>
+          <span>Backlog PBI 1–12</span>
+          <span class="nav-badge" id="nav-pbi-badge">0/12</span>
+        </button>
+        <button class="nav-btn" data-view="api" type="button">
+          <span class="nav-icon">🔌</span>
+          <span>API & Database</span>
+          <span class="nav-badge">12</span>
+        </button>
+        <button class="nav-btn" data-view="playground" type="button">
+          <span class="nav-icon">🧪</span>
+          <span>Interactive Lab</span>
+          <span class="nav-badge">3</span>
+        </button>
+        <button class="nav-btn" data-view="quiz" type="button">
+          <span class="nav-icon">🎯</span>
+          <span>แบบทดสอบ</span>
+          <span class="nav-badge">12</span>
+        </button>
+        <button class="nav-btn" data-view="resources" type="button">
+          <span class="nav-icon">🎬</span>
+          <span>คลิป & คำสั่ง</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="progress-mini">
+          <div class="progress-mini-head">
+            <span>ความคืบหน้า PBI</span>
+            <strong id="progress-text">0 / 12</strong>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+        <button id="theme-toggle" class="theme-toggle" type="button">
+          <span id="theme-icon">🌙</span>
+          <span id="theme-label">โหมดมืด</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-wrap">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="menu-btn" class="menu-btn" type="button" aria-label="Toggle menu">☰</button>
+          <h2 id="topbar-title" class="topbar-title">ภาพรวมโปรเจกต์ & ทีม</h2>
+        </div>
+        <div class="topbar-meta">
+          <span class="badge badge-indigo">INT504 · 1/2569</span>
+          <span class="badge badge-emerald mono">ip26-zen</span>
+        </div>
+      </header>
+
+      <main id="content" class="content"></main>
+    </div>
+  </div>
+
+  <dialog id="diagram-modal" class="diagram-modal" aria-label="Zoomed diagram viewer">
+    <div class="diagram-modal-bar">
+      <strong id="diagram-modal-title">Diagram</strong>
+      <div class="diagram-modal-actions">
+        <a id="diagram-modal-excalidraw" class="btn btn-sm" download>ดาวน์โหลด .excalidraw</a>
+        <a id="diagram-modal-svg" class="btn btn-sm" download>ดาวน์โหลด .svg</a>
+        <button id="diagram-modal-close" class="btn btn-sm btn-primary" type="button">ปิด (Esc)</button>
+      </div>
+    </div>
+    <div class="diagram-modal-stage">
+      <img id="diagram-modal-img" alt="Zoomed Excalidraw diagram">
+    </div>
+  </dialog>
+</body>
+</html>

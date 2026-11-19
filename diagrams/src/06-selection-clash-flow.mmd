@@ -1,0 +1,12 @@
+flowchart TD
+  Act["User clicks Select (POST) or Change (PUT)"] --> Dup{"POST: course already\nin selections?"}
+  Dup -->|Yes| C409A["409 already-selected\nShow message + sync selections"]
+  Dup -->|No / PUT| Same{"PUT: same section\nas current?"}
+  Same -->|Yes| S200["200 OK immediately\nKeep createdAt & updatedAt\n(Skip clash check)"]
+  Same -->|No| Clash["Check Clash vs Fixed + Selected\n(Exclude old section on PUT)\n1. Same dayOfWeek\n2. startA < endB && startB < endA\n3. startWeekA <= endWeekB && startWeekB <= endWeekA"]
+
+  Clash -->|No overlap OR acceptClash=true| Save["Save to DB\n201 Created / 200 OK\nUpdate 2 tables in memory\n(No schedule refetch!)"]
+  Clash -->|Overlap & !acceptClash| C409B["409 schedule-clash\nReturn clashes[] (Not saved!)"]
+  C409B --> Dlg["Frontend: askClash() Dialog\n'This section overlaps:' + list"]
+  Dlg -->|Cancel / Esc| Stop["Close dialog\nNo request, no table change"]
+  Dlg -->|Select anyway / Change anyway| Retry["Resend POST / PUT\nwith acceptClash: true"] --> Save

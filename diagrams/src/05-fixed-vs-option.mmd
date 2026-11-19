@@ -1,0 +1,16 @@
+flowchart TD
+  Start["All schedules for yearLevel n\n(BEFORE filtering studentGroup)"] --> Type{"Course Type?"}
+  Type -->|ELECTIVE| Opt["fixed = false (Option)"]
+  Type -->|CORE| HasGrp{"Has studentGroup\nA or B?"}
+  HasGrp -->|Yes| Fix["fixed = true (Fixed)"]
+  HasGrp -->|"No, group is null"| Cnt{"Count distinct sections\nin this course"}
+  Cnt -->|1 section| Fix
+  Cnt -->|More than 1 section| Opt
+
+  Fix --> Flt["Filter by studentGroup=A or B\nKeep fixed where group matches or null"]
+  Opt --> Keep["Keep ALL option rows"]
+
+  Flt --> T1["Table 1: My Schedule\nFixed + Selected sections"]
+  Keep --> Split{"courseId in\nstudent selections?"}
+  Split -->|Yes, matching section| T1
+  Split -->|No| T2["Table 2: Courses to Choose\nHide section if 0 rows"]

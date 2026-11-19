@@ -1,0 +1,8 @@
+flowchart TD
+  Home["Home Page (index.html)\nGuest mode — NO Keycloak call"] -->|Click My Schedule| MySched["my-schedule.html\nkeycloak.init(login-required, PKCE S256)"]
+  MySched -->|Redirect| KC["Keycloak Server\nrealm: itb-csv\nclientId: TEAM-CODE"]
+  KC -->|Auth Code + PKCE Verify| Token["Access Token (JWT)\npreferred_username, fullName, roles"]
+  Token --> Refresh["Before every protected call\nkeycloak.updateToken(30)"]
+  Refresh -->|Authorization: Bearer JWT| API["Express API (PBI 10)\nVerify JWKS + iss + exp + azp"]
+  API -->|Check role + self| Resp["200 OK Profile / Schedules\n401 Invalid Token | 403 Wrong Role"]
+  MySched -->|Click Sign Out| Out["keycloak.logout()\nEnd session -> Home (index.html)"]
