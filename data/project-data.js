@@ -87,7 +87,308 @@ window.PROJECT_DATA = {
       desc: "เจาะลึกโครงสร้างใน prisma/: schema.prisma (5 models), migrations/ (4 SQL), seed.js ($transaction upsert) และ MySQL utf8mb4",
       lessonId: "lesson-2",
     },
+    {
+      id: "11-beam-sprint3-guide",
+      sprint: "Beam · Sprint 3 Roadmap",
+      title: "11. Beam's Sprint 3 Roadmap — PBI 9 → PBI 11 → PBI 12 API",
+      desc: "แผนการลงมือทำทีละขั้นสำหรับ Beam: เริ่มจาก Validation (PBI 9) → Clash Detection & Dialog (PBI 11) → Weekly Sessions API (PBI 12)",
+      lessonId: "lesson-5",
+    },
   ],
+
+  beamGuide: {
+    summary: "คู่มือลงมือทำทีละขั้นสำหรับ Beam ใน Sprint 3 (PBI 9, PBI 11 และ PBI 12 API) อ้างอิงจากโครงสร้างโค้ดจริงใน int504-2026-project-group-44 — ติ๊กเช็กแต่ละขั้นเพื่อติดตามความคืบหน้าของตัวเองได้เลยครับ",
+    diagramId: "11-beam-sprint3-guide",
+    syncPoints: [
+      { with: "Dragon", topic: "problem.js & Auth Order", detail: "ส่ง backend/utils/problem.js ให้ Dragon ใช้กับ 401/403 และตกลงลำดับใน app.js ให้ auth middleware ทำงานก่อน validate-request เสมอ" },
+      { with: "Dragon", topic: "PBI 12 Sessions Schema", detail: "รอ Dragon รวม migration ของ academic_weeks, holidays, exam_periods, sessions (1,181 แถว) และ semester start/end date ก่อนเชื่อม query จริงใน session.service.js" },
+      { with: "Alan", topic: "Shared Files & Payload", detail: "นัดลำดับก่อนแก้ frontend/my-schedule.html (Beam เพิ่มเฉพาะ clash dialog) และ backend/routes/lecturer.routes.js (Beam เพิ่ม /:username/sessions) + ตกลงฟิลด์ JSON ของ sessions ให้ Alan ทำ timetable.js" },
+    ],
+    stages: [
+      {
+        stageId: "stage-1",
+        badge: "Stage 1 · ทำได้เลยทันที",
+        title: "PBI 9 — Request Validation & application/problem+json",
+        tests: "TC-PBI9-1 ถึง TC-PBI9-10",
+        steps: [
+          {
+            id: "beam-1",
+            action: "สร้างไฟล์ใหม่",
+            file: "backend/utils/problem.js",
+            title: "สร้าง helper กลางสำหรับตอบ Error แบบ application/problem+json",
+            detail: "ทุก error ช่วง 400–499 ต้องตั้ง header Content-Type: application/problem+json และคืน { type, title, status, ...extra } เพื่อใช้ร่วมกันทั้ง PBI 9, PBI 10 (Dragon), PBI 11 และ PBI 12",
+            code: `function sendProblem(res, { status, type, title, detail, ...extra }) {
+  return res
+    .status(status)
+    .type("application/problem+json")
+    .json({
+      type,
+      title,
+      status,
+      ...(detail !== undefined ? { detail } : {}),
+      ...extra,
+    });
+}
+
+module.exports = { sendProblem };`,
+          },
+          {
+            id: "beam-2",
+            action: "สร้างไฟล์ใหม่",
+            file: "backend/middleware/validate-request.js",
+            title: "เขียน Validation Middleware ตรวจ path / query / body และเก็บทุก field ที่ผิด",
+            detail: "กฎที่ต้องตรวจให้ครบ: yearLevel (int 1–4), studentGroup ('A'|'B'), studentId (11 หลัก /^\\d{11}$/), courseId (int 1..2147483647), section (int 1..99), acceptClash (boolean ถ้าส่งมา), body ต้องเป็น JSON object (ไม่ใช่ array/null/primitive), ค่า query ซ้ำ (Express คืนเป็น Array) — ห้ามหยุดแค่ error แรก ต้อง push ทุก field ที่ผิดลง errors[] ก่อนส่ง 400!",
+            code: `const { sendProblem } = require("../utils/problem");
+
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+function validatePostSelection(req, res, next) {
+  const errors = [];
+  if (!/^\\d{11}$/.test(req.params.studentId ?? "")) {
+    errors.push({ field: "studentId", message: "studentId must be 11 digits" });
+  }
+  if (!isPlainObject(req.body)) {
+    return sendProblem(res, {
+      status: 400, type: "validation-error", title: "Validation Error",
+      errors: [{ field: "body", message: "Request body must be a JSON object" }],
+    });
+  }
+  const { courseId, section, acceptClash } = req.body;
+  if (!Number.isInteger(courseId) || courseId < 1 || courseId > 2147483647) {
+    errors.push({ field: "courseId", message: "courseId must be an integer between 1 and 2147483647" });
+  }
+  if (!Number.isInteger(section) || section < 1 || section > 99) {
+    errors.push({ field: "section", message: "section must be an integer between 1 and 99" });
+  }
+  if (acceptClash !== undefined && typeof acceptClash !== "boolean") {
+    errors.push({ field: "acceptClash", message: "acceptClash must be a boolean" });
+  }
+  if (errors.length > 0) {
+    return sendProblem(res, { status: 400, type: "validation-error", title: "Validation Error", errors });
+  }
+  return next();
+}`,
+          },
+          {
+            id: "beam-3",
+            action: "แก้ไขไฟล์เดิม",
+            file: "backend/controllers/*.js + backend/app.js",
+            title: "ปรับ Error เดิมให้เป็น problem+json และดัก invalid JSON syntax (400)",
+            detail: "เปลี่ยน response.sendStatus(404/409) ใน student/selection/schedule controllers มาใช้ sendProblem(), เพิ่ม error handler ดัก SyntaxError จาก express.json() ให้ตอบ 400 problem+json และเช็กลำดับ: 401 → 403 → 400 → 404 (PUT เช็ก selection-not-found ก่อน section-not-found) → 409 (POST เช็ก already-selected ก่อน schedule-clash)",
+            code: `// ใน backend/app.js (ก่อน error handler 500)
+app.use((error, _req, res, next) => {
+  if (error?.type === "entity.parse.failed" || error instanceof SyntaxError) {
+    return sendProblem(res, {
+      status: 400,
+      type: "validation-error",
+      title: "Invalid JSON",
+      errors: [{ field: "body", message: "Malformed JSON payload" }],
+    });
+  }
+  return next(error);
+});`,
+          },
+          {
+            id: "beam-4",
+            action: "แก้ไขไฟล์เดิม",
+            file: "frontend/app.js",
+            title: "ล้าง ?yearLevel= ที่ผิดใน URL ของหน้า Home โดยไม่ Reload",
+            detail: "ถ้าผู้ใช้เปิด /?yearLevel=9 หรือ ?yearLevel=abc หรือมี yearLevel ซ้ำ ให้ fallback เป็น 'all' แล้วเรียก history.replaceState() ลบ query parameter ที่ผิดออกโดยไม่ reload หน้า และไม่ส่งค่าผิดไป API",
+            code: `function getInitialYearLevel() {
+  const params = new URLSearchParams(window.location.search);
+  const allValues = params.getAll("yearLevel");
+  const valid = allValues.length === 1 && ["1", "2", "3", "4"].includes(allValues[0]);
+  if (!valid && allValues.length > 0) {
+    const cleanUrl = new URL(window.location.href);
+    cleanUrl.searchParams.delete("yearLevel");
+    history.replaceState({}, "", cleanUrl);
+    return "all";
+  }
+  return valid ? allValues[0] : "all";
+}`,
+          },
+        ],
+      },
+      {
+        stageId: "stage-2",
+        badge: "Stage 2 · ทำต่อจาก Stage 1 ได้เลย",
+        title: "PBI 11 — Schedule Clash Detection (Backend + Frontend)",
+        tests: "TC-PBI11-1 ถึง TC-PBI11-14",
+        steps: [
+          {
+            id: "beam-5",
+            action: "สร้างไฟล์ใหม่",
+            file: "backend/services/clash.service.js",
+            title: "เขียนฟังก์ชันตรวจเวลาชนกัน 3 เงื่อนไข + เรียงรายการ clashes[]",
+            detail: "ดึงตาราง fixed ของกลุ่มนักศึกษา + แถวของวิชาที่นักศึกษาเลือกอยู่แล้ว (ตอน PUT ให้ตัด courseId ที่กำลังจะเปลี่ยนออกก่อน เพื่อไม่ให้ชนกับ section เดิมของตัวเอง!) แล้วเทียบกับทุกแถวของ candidate section (1 section มีหลายวันได้)",
+            code: `const { normalizeTime, compareSchedules } = require("../utils/schedule");
+
+function rowsClash(a, b) {
+  if (String(a.dayOfWeek).toUpperCase() !== String(b.dayOfWeek).toUpperCase()) return false;
+  const startA = normalizeTime(a.startTime);
+  const endA = normalizeTime(a.endTime);
+  const startB = normalizeTime(b.startTime);
+  const endB = normalizeTime(b.endTime);
+  // เวลาต่อกันพอดี (12:30 vs 12:30) ไม่ถือว่าชน!
+  if (!(startA < endB && startB < endA)) return false;
+  // ช่วงสัปดาห์ทับกันอย่างน้อย 1 สัปดาห์
+  return a.startWeek <= b.endWeek && b.startWeek <= a.endWeek;
+}
+
+function findClashes(candidateRows, occupiedRows) {
+  const matched = new Map();
+  for (const cand of candidateRows) {
+    for (const occ of occupiedRows) {
+      if (rowsClash(cand, occ)) {
+        matched.set(occ.id, occ);
+      }
+    }
+  }
+  return [...matched.values()].sort(compareSchedules);
+}`,
+          },
+          {
+            id: "beam-6",
+            action: "แก้ไขไฟล์เดิม",
+            file: "backend/services/selection.service.js & controller.js",
+            title: "ต่อ Clash Check เข้า POST และ PUT พร้อมรองรับ acceptClash: true",
+            detail: "เช็กกฎสำคัญ 3 ข้อ: (1) POST ต้องเช็ก already-selected (409) ก่อน schedule-clash (409), (2) PUT ถ้าส่ง section เดิมต้องตอบ 200 ทันทีโดยไม่ตรวจ clash และไม่เปลี่ยน updatedAt, (3) ถ้าพบ clash และ acceptClash !== true ให้ตอบ 409 type: 'schedule-clash' พร้อม clashes[] โดยยังไม่บันทึกลง DB",
+            code: `// ใน createSelection / changeSelection:
+if (!acceptClash) {
+  const clashes = findClashes(candidateRows, occupiedRows);
+  if (clashes.length > 0) {
+    return { status: "CLASH", clashes };
+  }
+}
+// ใน selection.controller.js:
+if (result?.status === "CLASH") {
+  return sendProblem(response, {
+    status: 409,
+    type: "schedule-clash",
+    title: "Schedule Clash",
+    clashes: result.clashes,
+  });
+}`,
+          },
+          {
+            id: "beam-7",
+            action: "แก้ไขไฟล์ร่วม (นัด Alan)",
+            file: "frontend/my-schedule.html & frontend/scripts/dialogs.js",
+            title: "เพิ่ม Clash <dialog> และฟังก์ชัน askClash(clashes, actionLabel)",
+            detail: "แสดงข้อความ 'This section overlaps:' พร้อมรายการวิชาที่ชน และปุ่ม 'Select anyway' (ตอน POST) หรือ 'Change anyway' (ตอน PUT) คู่กับปุ่ม Cancel โดยกด Esc ต้องเท่ากับ Cancel (คืน false)",
+            code: `// frontend/scripts/dialogs.js
+function askClash(clashes, confirmLabel) {
+  clashList.replaceChildren();
+  for (const c of clashes) {
+    const li = document.createElement("li");
+    li.textContent = \`\${c.course.code} \${c.course.title} (Section \${c.section}) — \${dayAndTime(c)}\`;
+    clashList.appendChild(li);
+  }
+  clashConfirmBtn.textContent = confirmLabel; // "Select anyway" หรือ "Change anyway"
+  clashDialog.returnValue = "cancel";
+  clashDialog.showModal();
+  return new Promise((resolve) => {
+    clashDialog.addEventListener("close", () => resolve(clashDialog.returnValue === "confirm"), { once: true });
+  });
+}`,
+          },
+          {
+            id: "beam-8",
+            action: "แก้ไขไฟล์เดิม + Build",
+            file: "frontend/scripts/selections.js → npm run build:js",
+            title: "แยก 409 already-selected vs schedule-clash และส่งซ้ำพร้อม acceptClash: true",
+            detail: "เมื่อได้ status 409 ให้อ่าน problem = await response.json() แล้วเช็ก problem.type: ถ้าเป็น 'schedule-clash' ให้เรียก askClash(); ถ้าผู้ใช้กดยืนยันให้ยิง POST/PUT เดิมซ้ำพร้อม { ..., acceptClash: true } ถ้ากด Cancel/Esc ห้ามยิง request เพิ่มและห้ามเปลี่ยนตาราง — เสร็จแล้วรัน npm run build:js เสมอ!",
+            code: `if (response.status === 409) {
+  const problem = await response.json().catch(() => ({}));
+  if (problem.type === "schedule-clash") {
+    const proceed = await askClash(problem.clashes ?? [], "Select anyway");
+    if (!proceed) return; // Cancel/Esc -> ไม่ทำอะไรต่อ
+    const retry = await apiRequest(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId: schedule.course.id, section: schedule.section, acceptClash: true }),
+    });
+    if (retry.status === 201) {
+      state.selections.push(await retry.json());
+      onChange();
+      return;
+    }
+  } else {
+    await showMessage("This course is already in your schedule.");
+    state.selections = await getJson(url);
+    onChange();
+  }
+}`,
+          },
+        ],
+      },
+      {
+        stageId: "stage-3",
+        badge: "Stage 3 · ทำหลังรับ Schema จาก Dragon & Alan",
+        title: "PBI 12 API — Semester & Weekly Sessions",
+        tests: "TC-PBI12-1 ถึง TC-PBI12-7",
+        steps: [
+          {
+            id: "beam-9",
+            action: "สร้างไฟล์ใหม่",
+            file: "backend/routes/semester.routes.js",
+            title: "เปิด Public Endpoint GET /api/v1/semester",
+            detail: "ไม่ต้องใช้ Bearer token — อ่าน academic_settings (id=1) แล้วคืน { academicYear, semester, startDate, endDate } ในรูปแบบ yyyy-mm-dd",
+            code: `// GET /api/v1/semester (Public)
+router.get("/", async (_req, res, next) => {
+  try {
+    const s = await prisma.academicSettings.findUnique({ where: { id: 1 } });
+    res.status(200).json({
+      academicYear: s.currentAcademicYear,
+      semester: s.currentSemester,
+      startDate: formatDate(s.semesterStartDate),
+      endDate: formatDate(s.semesterEndDate),
+    });
+  } catch (err) { next(err); }
+});`,
+          },
+          {
+            id: "beam-10",
+            action: "สร้างไฟล์ใหม่",
+            file: "backend/services/session.service.js & controller.js",
+            title: "คำนวณสัปดาห์จันทร์–อาทิตย์, ตรวจวันที่จริง yyyy-mm-dd และดึง Sessions + Holidays",
+            detail: "จุดระวัง: (1) ต้องเช็กว่า date เป็นวันที่ที่มีอยู่จริง (เช่น 2026-02-30 ต้องตอบ 400 validation-error), (2) คำนวณ weekStart (วันจันทร์) ถึง weekEnd (วันอาทิตย์), (3) วันนอกภาคเรียนต้องรับได้โดยคืน label: null และ sessions: [], (4) นักศึกษาได้ sessions ของ fixed + selected, อาจารย์ได้เฉพาะที่ตนสอน, (5) เรียงผลตาม date → startTime → id",
+            code: `function parseStrictDate(str) {
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(str ?? "")) return null;
+  const [y, m, d] = str.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  // ป้องกัน JS auto-rollover เช่น 2026-02-30 -> 2026-03-02
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d) return null;
+  return dt;
+}
+
+function getMondayToSunday(utcDate) {
+  const day = utcDate.getUTCDay(); // 0=Sun, 1=Mon..6=Sat
+  const diffToMon = day === 0 ? -6 : 1 - day;
+  const monday = new Date(utcDate);
+  monday.setUTCDate(utcDate.getUTCDate() + diffToMon);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  return { weekStart: monday, weekEnd: sunday };
+}`,
+          },
+          {
+            id: "beam-11",
+            action: "แก้ไขไฟล์ร่วม (นัด Alan + Dragon)",
+            file: "backend/routes/student.routes.js & lecturer.routes.js & app.js",
+            title: "ผูก Routes ของ /sessions และรันทดสอบครบ PBI 1–12",
+            detail: "เพิ่ม GET /api/v1/students/:studentId/sessions และ GET /api/v1/lecturers/:username/sessions ใต้ auth guard ของ Dragon, ส่งตัวอย่าง JSON ให้ Alan ใช้ทำ timetable.js แล้วรัน npm test + npm run build:js + ตรวจบน VM ผ่าน Run Now ก่อน Trial 23 พ.ย. 18:00 น.",
+            code: `# เช็กงานทั้งหมดของ Beam ก่อนเปิด PR
+npm test
+npm run build:js
+npm run build:css`,
+          },
+        ],
+      },
+    ],
+  },
 
   systemArchitecture: {
     frontend: {

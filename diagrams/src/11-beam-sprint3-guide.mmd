@@ -1,0 +1,29 @@
+flowchart LR
+  subgraph S1["Stage 1: PBI 9 — Validation & problem+json"]
+    direction TB
+    P1["1. backend/utils/problem.js\nsendProblem() -> application/problem+json"]
+    P2["2. backend/middleware/validate-request.js\nCheck path/query/body, collect ALL errors"]
+    P3["3. Update controllers & app.js\nOrder: 401 -> 403 -> 400 -> 404 -> 409"]
+    P4["4. Fix frontend/app.js\nInvalid ?yearLevel -> All + replaceState()"]
+    P1 --> P2 --> P3 --> P4
+  end
+
+  subgraph S2["Stage 2: PBI 11 — Schedule Clash"]
+    direction TB
+    C1["5. backend/services/clash.service.js\nSame day + time (<) + week (<=)"]
+    C2["6. selection.service.js & controller.js\n409 schedule-clash | acceptClash: true\nPUT same section -> 200 (keep updatedAt)"]
+    C3["7. my-schedule.html + scripts/dialogs.js\nAdd clash <dialog> & askClash()"]
+    C4["8. scripts/selections.js + npm run build:js\nSplit already-selected vs schedule-clash"]
+    C1 --> C2 --> C3 --> C4
+  end
+
+  subgraph S3["Stage 3: PBI 12 — Weekly Sessions API"]
+    direction TB
+    W0["Sync with Dragon (1,181 sessions)\n& Alan (lecturer.routes.js)"]
+    W1["9. backend/routes/semester.routes.js\nPublic GET /api/v1/semester"]
+    W2["10. session.service.js & controller.js\nValidate yyyy-mm-dd, Mon-Sun, holidays"]
+    W3["11. Mount /students/:id/sessions\n& /lecturers/:username/sessions"]
+    W0 --> W1 --> W2 --> W3
+  end
+
+  S1 --> S2 --> S3

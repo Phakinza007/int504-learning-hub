@@ -1,13 +1,15 @@
 (() => {
   const DATA = window.PROJECT_DATA;
   const STORAGE_DONE = "int504_hub_pbi_done";
+  const STORAGE_BEAM = "int504_hub_beam_done";
   const STORAGE_THEME = "int504_hub_theme";
 
   const VIEW_TITLES = {
     overview: "ภาพรวมโปรเจกต์ & ทีม",
+    beam: "⚡ Beam's Sprint 3 Implementation Guide (11 Steps)",
     arch: "System Architecture — แยก Frontend / Backend / Database",
     project: "รายละเอียดโค้ดจริงในโปรเจกต์ (int504-2026-project-group-44)",
-    diagrams: "Excalidraw Diagrams (10 แผนภาพ)",
+    diagrams: "Excalidraw Diagrams (11 แผนภาพ)",
     lessons: "บทเรียน 7 บท (Sprint 1–3)",
     pbis: "Backlog PBI 1–12 & Checklist",
     api: "API Contracts & Database Schema",
@@ -27,7 +29,8 @@
     pbiQuery: "",
     apiSprint: "all",
     apiQuery: "",
-    donePbis: loadDoneSet(),
+    donePbis: loadSet(STORAGE_DONE),
+    doneBeamSteps: loadSet(STORAGE_BEAM),
     quizAnswers: {},
     theme: localStorage.getItem(STORAGE_THEME) || "light",
   };
@@ -43,6 +46,7 @@
   const progressTextEl = document.getElementById("progress-text");
   const progressFillEl = document.getElementById("progress-fill");
   const navPbiBadgeEl = document.getElementById("nav-pbi-badge");
+  const navBeamBadgeEl = document.getElementById("nav-beam-badge");
 
   const diagramModal = document.getElementById("diagram-modal");
   const diagramModalTitle = document.getElementById("diagram-modal-title");
@@ -51,9 +55,9 @@
   const diagramModalSvg = document.getElementById("diagram-modal-svg");
   const diagramModalClose = document.getElementById("diagram-modal-close");
 
-  function loadDoneSet() {
+  function loadSet(key) {
     try {
-      const parsed = JSON.parse(localStorage.getItem(STORAGE_DONE) || "[]");
+      const parsed = JSON.parse(localStorage.getItem(key) || "[]");
       return new Set(Array.isArray(parsed) ? parsed : []);
     } catch {
       return new Set();
@@ -62,6 +66,11 @@
 
   function saveDoneSet() {
     localStorage.setItem(STORAGE_DONE, JSON.stringify([...state.donePbis]));
+    updateProgressUI();
+  }
+
+  function saveBeamSet() {
+    localStorage.setItem(STORAGE_BEAM, JSON.stringify([...state.doneBeamSteps]));
     updateProgressUI();
   }
 
@@ -107,6 +116,11 @@
     progressTextEl.textContent = `${done} / ${total}`;
     progressFillEl.style.width = `${pct}%`;
     navPbiBadgeEl.textContent = `${done}/${total}`;
+
+    if (navBeamBadgeEl) {
+      const beamTotal = DATA.beamGuide.stages.reduce((acc, s) => acc + s.steps.length, 0);
+      navBeamBadgeEl.textContent = `${state.doneBeamSteps.size}/${beamTotal}`;
+    }
   }
 
   function closeMobileMenu() {
@@ -242,9 +256,9 @@
             <strong>Definition of Done:</strong> Gate และทุก Test Case ของ PBI (รวม PBI เก่า Sprint 1–2) ต้องผ่านบนระบบที่ Deploy จริงผ่าน Run Now / Snapshot
           </div>
           <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-primary" data-jump-view="arch" type="button">เจาะลึก System Arch (Front / Back / DB) →</button>
-            <button class="btn" data-jump-view="project" type="button">ตารางไฟล์ทั้งหมด</button>
-            <button class="btn" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 10 ภาพ</button>
+            <button class="btn btn-primary" data-jump-view="beam" type="button">⚡ เปิด Beam's Sprint 3 Guide →</button>
+            <button class="btn" data-jump-view="arch" type="button">System Arch (Front / Back / DB)</button>
+            <button class="btn" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 11 ภาพ</button>
           </div>
         </div>
       </section>
@@ -266,6 +280,83 @@
             .join("")}
         </div>
       </section>
+    `;
+  }
+
+  /* ==================== VIEW 1.1: BEAM'S SPRINT 3 GUIDE ==================== */
+  function renderBeamGuide() {
+    const guide = DATA.beamGuide;
+    const diagram = DATA.diagrams.find((d) => d.id === guide.diagramId);
+    const totalSteps = guide.stages.reduce((acc, s) => acc + s.steps.length, 0);
+    const doneSteps = state.doneBeamSteps.size;
+    const pct = Math.round((doneSteps / totalSteps) * 100);
+
+    return `
+      <section class="hero" style="background:linear-gradient(135deg, #065f46 0%, #059669 52%, #0284c7 100%);">
+        <div class="hero-eyebrow">⚡ Personal Implementation Playbook · Beam (Sprint 3)</div>
+        <h1>Beam's Sprint 3 Guide: PBI 9 → PBI 11 → PBI 12 API</h1>
+        <p>${escapeHtml(guide.summary)}</p>
+        <div style="display:flex; align-items:center; gap:0.9rem; flex-wrap:wrap;">
+          <span class="hero-pill">ความคืบหน้าของ Beam: <strong>${doneSteps} / ${totalSteps} ขั้น (${pct}%)</strong></span>
+          <span class="hero-pill">กำหนด Trial: 23 พ.ย. 18:00 · Snapshot: 23:59</span>
+        </div>
+      </section>
+
+      ${diagram ? renderDiagramCard(diagram) : ""}
+
+      <section class="card section-block">
+        <h3 class="card-title">🤝 จุดที่ต้องนัดกับ Alan และ Dragon ก่อนลงมือ</h3>
+        <div class="grid-3">
+          ${guide.syncPoints
+            .map(
+              (sp) => `
+            <div style="border:1px solid var(--border); border-radius:10px; padding:0.9rem; background:var(--bg-subtle);">
+              <div style="margin-bottom:0.45rem;">${ownerBadge(sp.with)} <strong style="font-size:0.86rem; margin-left:0.3rem;">${escapeHtml(sp.topic)}</strong></div>
+              <div style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(sp.detail)}</div>
+            </div>
+          `,
+            )
+            .join("")}
+        </div>
+      </section>
+
+      ${guide.stages
+        .map(
+          (stage) => `
+        <section class="section-block">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:0.5rem; margin-bottom:0.75rem;">
+            <div>
+              <span class="badge badge-emerald">${escapeHtml(stage.badge)}</span>
+              <h3 style="margin:0.35rem 0 0; font-size:1.12rem;">${escapeHtml(stage.title)}</h3>
+            </div>
+            <span class="badge badge-neutral mono">${escapeHtml(stage.tests)}</span>
+          </div>
+
+          ${stage.steps
+            .map((step, idx) => {
+              const checked = state.doneBeamSteps.has(step.id);
+              return `
+                <article class="card ${checked ? "done" : ""}" style="margin-bottom:0.95rem; ${checked ? "border-color:var(--emerald);" : ""}">
+                  <div style="display:flex; align-items:flex-start; gap:0.8rem;">
+                    <input type="checkbox" class="pbi-check" style="margin-top:0.2rem;" data-check-beam="${escapeHtml(step.id)}" ${checked ? "checked" : ""} aria-label="Mark ${escapeHtml(step.id)} done">
+                    <div style="flex:1; min-width:0;">
+                      <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.45rem; margin-bottom:0.35rem;">
+                        <span class="badge ${step.action.includes("ใหม่") ? "badge-rose" : "badge-amber"}">${escapeHtml(step.action)}</span>
+                        <code class="mono" style="font-weight:700; font-size:0.84rem; color:var(--accent-text);">${escapeHtml(step.file)}</code>
+                      </div>
+                      <div style="font-weight:700; font-size:0.96rem; margin-bottom:0.35rem;">${escapeHtml(step.title)}</div>
+                      <p style="margin:0 0 0.65rem; font-size:0.87rem; color:var(--text-secondary);">${escapeHtml(step.detail)}</p>
+                      ${renderCodeBlock(step.file, step.code)}
+                    </div>
+                  </div>
+                </article>
+              `;
+            })
+            .join("")}
+        </section>
+      `,
+        )
+        .join("")}
     `;
   }
 
@@ -1082,6 +1173,7 @@
     });
 
     if (state.view === "overview") contentEl.innerHTML = renderOverview();
+    else if (state.view === "beam") contentEl.innerHTML = renderBeamGuide();
     else if (state.view === "arch") contentEl.innerHTML = renderSystemArch();
     else if (state.view === "project") contentEl.innerHTML = renderProjectInfo();
     else if (state.view === "diagrams") contentEl.innerHTML = renderDiagrams();
@@ -1211,6 +1303,16 @@
     const apiSprintBtn = e.target.closest("[data-api-sprint]");
     if (apiSprintBtn) {
       state.apiSprint = apiSprintBtn.dataset.apiSprint;
+      render();
+      return;
+    }
+
+    const beamCheck = e.target.closest("[data-check-beam]");
+    if (beamCheck) {
+      const id = beamCheck.dataset.checkBeam;
+      if (beamCheck.checked) state.doneBeamSteps.add(id);
+      else state.doneBeamSteps.delete(id);
+      saveBeamSet();
       render();
       return;
     }
