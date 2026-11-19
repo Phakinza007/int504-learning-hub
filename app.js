@@ -5,7 +5,8 @@
 
   const VIEW_TITLES = {
     overview: "ภาพรวมโปรเจกต์ & ทีม",
-    diagrams: "Excalidraw Diagrams (6 แผนภาพ)",
+    project: "รายละเอียดโค้ดจริงในโปรเจกต์ (int504-2026-project-group-44)",
+    diagrams: "Excalidraw Diagrams (7 แผนภาพ)",
     lessons: "บทเรียน 7 บท (Sprint 1–3)",
     pbis: "Backlog PBI 1–12 & Checklist",
     api: "API Contracts & Database Schema",
@@ -17,6 +18,8 @@
   const state = {
     view: "overview",
     activeLesson: DATA.lessons[0].id,
+    fileLayer: "all",
+    fileQuery: "",
     pbiSprint: "all",
     pbiOwner: "all",
     pbiQuery: "",
@@ -237,7 +240,8 @@
             <strong>Definition of Done:</strong> Gate และทุก Test Case ของ PBI (รวม PBI เก่า Sprint 1–2) ต้องผ่านบนระบบที่ Deploy จริงผ่าน Run Now / Snapshot
           </div>
           <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
-            <button class="btn btn-primary" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 6 ภาพ →</button>
+            <button class="btn btn-primary" data-jump-view="project" type="button">ดูรายละเอียดโค้ดจริงในโปรเจกต์ →</button>
+            <button class="btn" data-jump-view="diagrams" type="button">ดู Excalidraw ทั้ง 7 ภาพ</button>
             <button class="btn" data-jump-view="playground" type="button">ลองเล่น Interactive Lab</button>
           </div>
         </div>
@@ -258,6 +262,214 @@
           `,
             )
             .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  /* ==================== VIEW 1.5: PROJECT INFO (REAL CODEBASE) ==================== */
+  function fileStatusBadge(status) {
+    if (status === "existing") return `<span class="badge badge-emerald">มีใน Repo แล้ว</span>`;
+    if (status === "sprint3-edit") return `<span class="badge badge-amber">มีแล้ว · แก้เพิ่ม S3</span>`;
+    return `<span class="badge badge-rose">สร้างใหม่ S3</span>`;
+  }
+
+  function renderProjectInfo() {
+    const info = DATA.projectInfo;
+    const fileMapDiagram = DATA.diagrams.find((d) => d.id === "07-project-file-map");
+    const q = state.fileQuery.trim().toLowerCase();
+    const filteredFiles = info.files.filter((f) => {
+      if (state.fileLayer !== "all" && f.layer !== state.fileLayer) return false;
+      if (q && !`${f.path} ${f.owner} ${f.exports} ${f.desc}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
+
+    const layerLabels = [
+      ["all", `ทั้งหมด (${info.files.length})`],
+      ["backend", "Backend"],
+      ["frontend", "Frontend"],
+      ["prisma", "Prisma/DB"],
+      ["infra", "Docker/Nginx"],
+      ["sprint3", "สร้างใหม่ Sprint 3"],
+    ];
+
+    return `
+      <section class="grid-4">
+        <div class="stat-card">
+          <div class="stat-label">Repository</div>
+          <div class="stat-value mono" style="font-size:1rem;">${escapeHtml(info.repoName)}</div>
+          <div class="stat-sub">Compose project: <code class="inline-code">${escapeHtml(info.composeName)}</code></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">HEAD ล่าสุดบน main</div>
+          <div class="stat-value mono" style="font-size:1.15rem;">5e30ae0</div>
+          <div class="stat-sub">Sprint 1–2 ครบ · แยกโมดูล frontend/scripts/ แล้ว</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Prisma Migrations</div>
+          <div class="stat-value">4 ไฟล์</div>
+          <div class="stat-sub">5 Models · 51 Courses · 92 Schedules</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Keycloak Client</div>
+          <div class="stat-value mono" style="font-size:1.1rem;">${escapeHtml(info.keycloak.clientId)}</div>
+          <div class="stat-sub">realm: ${escapeHtml(info.keycloak.realm)} · ${escapeHtml(info.keycloak.pkce)}</div>
+        </div>
+      </section>
+
+      <section class="section-block">
+        ${renderDiagramCard(fileMapDiagram)}
+      </section>
+
+      <section class="card section-block">
+        <h3 class="card-title">📁 แผนที่ไฟล์จริงใน Repo & จุดที่ต้องแก้/เพิ่มใน Sprint 3</h3>
+        <div class="filter-bar" style="margin-top:0.75rem;">
+          <div class="chip-group">
+            ${layerLabels
+              .map(
+                ([key, label]) =>
+                  `<button type="button" class="chip ${state.fileLayer === key ? "active" : ""}" data-file-layer="${key}">${escapeHtml(label)}</button>`,
+              )
+              .join("")}
+          </div>
+          <input type="search" id="file-search" class="input search-input" placeholder="ค้นหาชื่อไฟล์, ฟังก์ชัน หรือชื่อเจ้าของงาน..." value="${escapeHtml(state.fileQuery)}">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ไฟล์</th>
+                <th>สถานะ</th>
+                <th>ผู้ดูแล</th>
+                <th>Exports / Functions</th>
+                <th>หน้าที่และสิ่งที่ต้องทำต่อใน Sprint 3</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredFiles
+                .map(
+                  (f) => `
+                <tr>
+                  <td class="mono" style="font-weight:700; font-size:0.8rem; white-space:nowrap;">${escapeHtml(f.path)}</td>
+                  <td>${fileStatusBadge(f.status)}</td>
+                  <td style="white-space:nowrap;">${escapeHtml(f.owner)}</td>
+                  <td class="mono" style="font-size:0.76rem; color:var(--accent-text);">${escapeHtml(f.exports)}</td>
+                  <td style="font-size:0.83rem; color:var(--text-secondary);">${escapeHtml(f.desc)}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="grid-2 section-block">
+        <div class="card">
+          <h3 class="card-title">🐳 Docker Compose (compose.yaml — 4 Containers)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Service</th><th>Image / Build</th><th>Ports & Healthcheck</th><th>หน้าที่</th></tr></thead>
+              <tbody>
+                ${info.containers
+                  .map(
+                    (c) => `
+                  <tr>
+                    <td class="mono" style="font-weight:700;">${escapeHtml(c.name)}</td>
+                    <td class="mono" style="font-size:0.78rem;">${escapeHtml(c.image)}</td>
+                    <td style="font-size:0.78rem;"><div class="mono">${escapeHtml(c.ports)}</div><div style="color:var(--text-muted);">${escapeHtml(c.health)}</div></td>
+                    <td style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(c.role)}</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">🔀 Nginx Reverse Proxy (nginx/default.conf.template)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Location Match</th><th>Proxy / Redirect</th><th>หมายเหตุ</th></tr></thead>
+              <tbody>
+                ${info.nginxRoutes
+                  .map(
+                    (r) => `
+                  <tr>
+                    <td class="mono" style="font-size:0.76rem; font-weight:600;">${escapeHtml(r.match)}</td>
+                    <td class="mono" style="font-size:0.76rem; color:var(--accent-text);">${escapeHtml(r.target)}</td>
+                    <td style="font-size:0.81rem; color:var(--text-secondary);">${escapeHtml(r.note)}</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid-2 section-block">
+        <div class="card">
+          <h3 class="card-title">📦 Dependencies ใน package.json</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Package</th><th>Version</th><th>หน้าที่ในโปรเจกต์</th></tr></thead>
+              <tbody>
+                ${info.packages
+                  .map(
+                    (p) => `
+                  <tr>
+                    <td class="mono" style="font-weight:700;">${escapeHtml(p.name)}</td>
+                    <td class="mono" style="font-size:0.8rem;">${escapeHtml(p.version)}</td>
+                    <td style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(p.role)}</td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">🧬 ประวัติ Prisma Migrations (prisma/migrations/)</h3>
+          <div class="timeline">
+            ${info.migrations
+              .map(
+                (m) => `
+              <div class="timeline-item">
+                <div class="timeline-date mono">${escapeHtml(m.id)} · Sprint ${m.sprint}</div>
+                <div class="timeline-text">${escapeHtml(m.desc)}</div>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>
+        </div>
+      </section>
+
+      <section class="card section-block">
+        <h3 class="card-title">⚙️ NPM Scripts จริงใน package.json</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Script</th><th>คำสั่งจริง</th><th>หน้าที่</th></tr></thead>
+            <tbody>
+              ${info.scripts
+                .map(
+                  (s) => `
+                <tr>
+                  <td class="mono" style="font-weight:700; white-space:nowrap;">${escapeHtml(s.name)}</td>
+                  <td class="mono" style="font-size:0.77rem;">${escapeHtml(s.cmd)}</td>
+                  <td style="font-size:0.82rem; color:var(--text-secondary);">${escapeHtml(s.desc)}</td>
+                </tr>
+              `,
+                )
+                .join("")}
+            </tbody>
+          </table>
         </div>
       </section>
     `;
@@ -812,6 +1024,7 @@
     });
 
     if (state.view === "overview") contentEl.innerHTML = renderOverview();
+    else if (state.view === "project") contentEl.innerHTML = renderProjectInfo();
     else if (state.view === "diagrams") contentEl.innerHTML = renderDiagrams();
     else if (state.view === "lessons") contentEl.innerHTML = renderLessons();
     else if (state.view === "pbis") contentEl.innerHTML = renderPbis();
@@ -821,6 +1034,19 @@
       wirePlayground();
     } else if (state.view === "quiz") contentEl.innerHTML = renderQuiz();
     else if (state.view === "resources") contentEl.innerHTML = renderResources();
+
+    const fileSearch = document.getElementById("file-search");
+    if (fileSearch) {
+      fileSearch.addEventListener("input", (e) => {
+        state.fileQuery = e.target.value;
+        render();
+        const fresh = document.getElementById("file-search");
+        if (fresh) {
+          fresh.focus();
+          fresh.setSelectionRange(fresh.value.length, fresh.value.length);
+        }
+      });
+    }
 
     const pbiSearch = document.getElementById("pbi-search");
     if (pbiSearch) {
@@ -892,6 +1118,13 @@
       state.activeLesson = lessonBtn.dataset.lessonId;
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    const fileLayerBtn = e.target.closest("[data-file-layer]");
+    if (fileLayerBtn) {
+      state.fileLayer = fileLayerBtn.dataset.fileLayer;
+      render();
       return;
     }
 

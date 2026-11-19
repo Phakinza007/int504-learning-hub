@@ -1,0 +1,31 @@
+flowchart LR
+  subgraph FE["frontend/ (Source -> build:js / build:css)"]
+    F1["index.html + app.js\nGuest Schedule (PBI 1-2)"]
+    F2["my-schedule.html\nloads bundle my-schedule.js"]
+    F3["scripts/my-schedule.js\nstate: studentId, schedules, selections"]
+    F4["scripts/auth.js + api.js + profile.js\nKeycloak ip26-zen & fetch"]
+    F5["scripts/course-tables.js\nrenderTables (My Schedule + Options)"]
+    F6["scripts/selections.js + dialogs.js\nSelect / Remove / Change (+ PBI 11 Clash)"]
+    F2 --> F3
+    F3 --> F4
+    F3 --> F5
+    F3 --> F6
+  end
+
+  subgraph BE["backend/ (Express 5 + Prisma 6.19)"]
+    B1["server.js -> app.js\ncreateApp(prisma, teamCode)"]
+    B2["routes/\nschedule, student, selection"]
+    B3["controllers/\nschedule, student, selection"]
+    B4["services/\nschedule, student, selection"]
+    B5["utils/schedule.js\nsort, normalizeTime, isFixed"]
+    B1 --> B2 --> B3 --> B4 --> B5
+  end
+
+  subgraph DB["prisma/ (MySQL 8.4 utf8mb4)"]
+    P1["schema.prisma (5 models)\n4 migrations applied"]
+    P2["seed.js + seed-data.json\n51 courses, 92 schedules, 8 ranges"]
+  end
+
+  F4 -->|/api/v1/*| B1
+  F1 -->|/api/v1/schedules| B1
+  B4 -->|PrismaClient| P1
