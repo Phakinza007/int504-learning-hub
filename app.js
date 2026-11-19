@@ -1168,7 +1168,7 @@
     if (jumpBtn) {
       state.view = jumpBtn.dataset.jumpView;
       render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -1176,7 +1176,7 @@
     if (lessonBtn) {
       state.activeLesson = lessonBtn.dataset.lessonId;
       render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -1249,7 +1249,7 @@
     state.view = btn.dataset.view;
     closeMobileMenu();
     render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo(0, 0);
   });
 
   menuBtn.addEventListener("click", () => {
